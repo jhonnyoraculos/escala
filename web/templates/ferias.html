@@ -68,16 +68,7 @@
       <tbody>
         {% for item in registros %}
           <tr>
-            <td>
-              <div class="inline">
-                {% if item.foto %}
-                  <img class="avatar-sm" src="{{ url_for('uploads', filename=item.foto) }}" alt="foto" />
-                {% else %}
-                  <span class="avatar-fallback">{{ item.nome[:1] }}</span>
-                {% endif %}
-                <span>{{ item.nome }}</span>
-              </div>
-            </td>
+            <td>{{ item.nome }}</td>
             <td>{{ item.data_inicio }}</td>
             <td>{{ item.data_fim }}</td>
             <td>{{ item.observacao or '-' }}</td>

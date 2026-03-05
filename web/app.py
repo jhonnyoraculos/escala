@@ -851,32 +851,25 @@ def colaboradores():
         funcao = (request.form.get("funcao") or "").strip()
         observacao = (request.form.get("observacao") or "").strip()
         ativo = (request.form.get("ativo") or "") == "on"
-        remover_foto = (request.form.get("remover_foto") or "") == "on"
 
         if not nome or not funcao:
             flash("Informe nome e fun??o.", "error")
             return redirect(url_for("colaboradores"))
 
-        foto_path = (request.form.get("foto_atual") or "").strip() or None
-        if remover_foto:
-            foto_path = None
-
-        foto = request.files.get("foto")
-        if foto and foto.filename:
-            try:
-                foto_path = svc.salvar_foto_colaborador(foto.read(), foto.filename)
-            except Exception as exc:
-                flash(f"Erro ao processar foto: {exc}", "error")
-                if colaborador_id:
-                    return redirect(url_for("colaboradores", edit_id=colaborador_id))
-                return redirect(url_for("colaboradores"))
-
         try:
             if colaborador_id:
-                svc.atualizar_colaborador(colaborador_id, nome, funcao, observacao, foto_path, ativo)
+                atual = svc.obter_colaborador_por_id(colaborador_id) or {}
+                svc.atualizar_colaborador(
+                    colaborador_id,
+                    nome,
+                    funcao,
+                    observacao,
+                    atual.get("foto"),
+                    ativo,
+                )
                 flash("Colaborador atualizado.", "success")
             else:
-                svc.add_colaborador(nome, funcao, observacao, foto_path)
+                svc.add_colaborador(nome, funcao, observacao, None)
                 flash("Colaborador salvo.", "success")
         except Exception as exc:
             flash(f"Erro ao salvar: {exc}", "error")

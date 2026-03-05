@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Colaboradores | JR Escala{% endblock %}
 {% block content %}
   <div class="section-title">
@@ -7,9 +7,8 @@
   </div>
 
   <div class="card">
-    <form method="post" enctype="multipart/form-data">
+    <form method="post">
       <input type="hidden" name="colaborador_id" value="{{ edit_item.id if edit_item }}" />
-      <input type="hidden" name="foto_atual" value="{{ edit_item.foto if edit_item else '' }}" />
       {% set funcoes = ["Motorista", "Ajudante"] %}
       <div class="grid three">
         <div class="form-row">
@@ -29,16 +28,6 @@
           <label>Observação</label>
           <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
         </div>
-        <div class="form-row">
-          <label>Foto</label>
-          <input type="file" name="foto" accept="image/*" />
-        </div>
-        {% if edit_item and edit_item.foto %}
-          <label class="inline">
-            <input type="checkbox" name="remover_foto" />
-            Remover foto atual
-          </label>
-        {% endif %}
         <label class="inline">
           <input type="checkbox" name="ativo" {% if not edit_item or edit_item.ativo %}checked{% endif %} />
           Ativo
@@ -57,7 +46,6 @@
     <table class="table">
       <thead>
         <tr>
-          <th>Foto</th>
           <th>Nome</th>
           <th>Função</th>
           <th>Obs.</th>
@@ -68,13 +56,6 @@
       <tbody>
         {% for item in registros %}
           <tr>
-            <td>
-              {% if item.foto %}
-                <img src="{{ url_for('uploads', filename=item.foto) }}" alt="foto" style="width:36px;height:36px;border-radius:10px;object-fit:cover;" />
-              {% else %}
-                -
-              {% endif %}
-            </td>
             <td>{{ item.nome }}</td>
             <td>{{ item.funcao }}</td>
             <td>{{ item.observacao or '-' }}</td>
@@ -91,7 +72,7 @@
           </tr>
         {% else %}
           <tr>
-            <td colspan="6">Nenhum colaborador cadastrado.</td>
+            <td colspan="5">Nenhum colaborador cadastrado.</td>
           </tr>
         {% endfor %}
       </tbody>
