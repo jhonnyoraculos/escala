@@ -30,6 +30,7 @@
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
   font-family: "Sora", sans-serif;
@@ -38,6 +39,8 @@ body {
     radial-gradient(circle at 90% 5%, #f8fafc, transparent 40%),
     linear-gradient(180deg, var(--bg-2), var(--bg-3));
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .bg-pattern {
@@ -102,6 +105,7 @@ body {
   gap: 8px;
   padding: 14px 20px 4px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .tabs a {
@@ -113,6 +117,8 @@ body {
   font-size: 13px;
   letter-spacing: 0.3px;
   transition: transform 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .tabs a:hover {
@@ -175,6 +181,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 label {
@@ -301,7 +308,8 @@ textarea {
   z-index: 60;
   display: grid;
   gap: 12px;
-  width: 320px;
+  width: min(320px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
 }
 
 .assistant-rotas,
@@ -500,6 +508,10 @@ textarea {
   flex-wrap: wrap;
 }
 
+.actions.inline {
+  align-items: flex-end;
+}
+
 .button {
   border: none;
   padding: 10px 16px;
@@ -508,6 +520,7 @@ textarea {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 40px;
 }
 
 .button.primary {
@@ -572,6 +585,15 @@ textarea {
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 720px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
 }
 
 .table th,
@@ -626,6 +648,8 @@ textarea {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .inline-between {
@@ -684,14 +708,97 @@ textarea {
     align-items: flex-start;
   }
 
-  .tabs {
-    overflow-x: auto;
+  .section-title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .content {
+    padding: 14px 16px 54px;
+  }
+
+  .card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .assistant-stack {
+    right: 12px;
+    bottom: 12px;
+    width: min(320px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
   }
 }
 
 @media (max-width: 640px) {
+  .topbar {
+    padding: 14px;
+  }
+
   .content {
-    padding: 12px 14px 40px;
+    padding: 12px 12px 44px;
+  }
+
+  .top-meta {
+    width: 100%;
+    text-align: left;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 12px 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .tabs a {
+    scroll-snap-align: start;
+  }
+
+  .section-title h2 {
+    font-size: 20px;
+  }
+
+  .badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .actions {
+    align-items: stretch;
+  }
+
+  .actions > .button,
+  .actions > a.button,
+  .actions > form {
+    width: 100%;
+  }
+
+  .actions > form .button {
+    width: 100%;
+  }
+
+  .table {
+    min-width: 620px;
+  }
+
+  .table th,
+  .table td {
+    font-size: 11px;
+    padding: 9px 10px;
+  }
+
+  .assistant-stack {
+    width: min(300px, calc(100vw - 12px));
+    max-width: calc(100vw - 12px);
+    right: 6px;
+    bottom: 6px;
+  }
+
+  .assistant-rotas__panel,
+  .assistant-disponiveis__panel {
+    max-height: 50vh;
   }
 
   .brand h1 {

@@ -43,7 +43,7 @@
       <input type="hidden" name="data" value="{{ data_iso }}" />
       <input type="hidden" name="data_saida" value="{{ data_saida or '' }}" />
       <input type="hidden" name="permitir_mot_aj" value="{{ 1 if permitir_mot_aj else 0 }}" />
-      <div class="form-row" style="min-width:320px;">
+      <div class="form-row">
         <label>Selecionar carregamento</label>
         <select name="edit_id" onchange="this.form.submit()" {% if not carregamentos_dia %}disabled{% endif %}>
           <option value="">{% if carregamentos_dia %}Selecionar carregamento{% else %}Nenhum carregamento{% endif %}</option>
@@ -158,6 +158,7 @@
   </div>
 
   <div class="card">
+    <div class="table-wrap">
     <table class="table">
       <thead>
         <tr>
@@ -210,6 +211,7 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
   </div>
 {% endblock %}
