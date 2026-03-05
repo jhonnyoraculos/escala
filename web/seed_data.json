@@ -1,0 +1,801 @@
+{
+  "source_db": "jr_escala.db",
+  "colaboradores": [
+    {
+      "id": 1,
+      "nome": "JOSE",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 2,
+      "nome": "JHONATAN DOS SANTOS VEIGA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 3,
+      "nome": "MESSIAS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 4,
+      "nome": "GABRIEL FELIPE DE FARIA OLIIVEIRA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\1e76983896354c589176b127b09c0b06.png",
+      "ativo": 1
+    },
+    {
+      "id": 5,
+      "nome": "GABRIELA  APARECIDA COSTA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 6,
+      "nome": "JOAO HELIO SILVA LACERDA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 7,
+      "nome": "FABRICIO DA SILVA SOUSA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 8,
+      "nome": "ALDEMIR LUIZ DA SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\31051c9715934565866752ca0556d0a3.png",
+      "ativo": 1
+    },
+    {
+      "id": 9,
+      "nome": "ANDRE LUIZ",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 10,
+      "nome": "CELSO ANTONIO CAETANO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\335c5106b5ee4eb6851a3bdd415d2920.png",
+      "ativo": 1
+    },
+    {
+      "id": 11,
+      "nome": "CRISTIANO CLEMENTINO OLIVEIRA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 12,
+      "nome": "DIEGO GERALDO BAZILIO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 13,
+      "nome": "DOUGLAS ALBERTINO GREGORIO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 14,
+      "nome": "DOUGLAS RODRIGUES DE OLIVEIRA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 15,
+      "nome": "FRANCES FRANCO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 16,
+      "nome": "FRANCIS EDER NUNES",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 17,
+      "nome": "FREDER HENRIQUE MOREIRA DE CARVALHO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 18,
+      "nome": "GABRIEL FELIPE DE FARIA OLIIVEIRA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 19,
+      "nome": "GERALDO FERNANDO DA SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\9f078f6e3bc740e4842f690af010ac78.png",
+      "ativo": 1
+    },
+    {
+      "id": 20,
+      "nome": "GUILHERME FLAVIO DOS SANTOS",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 21,
+      "nome": "HIPOCRATES HERSCHEL PINTO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 22,
+      "nome": "IAGO RAIMUNDO DIAS",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 23,
+      "nome": "JOSE ARILDO DOMINGOS",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 24,
+      "nome": "KAIO FERNANDO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 25,
+      "nome": "LUCAS APARECIDO ROQUE",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 26,
+      "nome": "LUCAS SILVA NOGUEIRA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 27,
+      "nome": "MATEUS SEVERINO DE SOUZA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 28,
+      "nome": "MATHEUS RINALDO PEREIRA VAZ",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 29,
+      "nome": "PAULO ROGERIO GONÇALVES AZEVEDO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 30,
+      "nome": "PEDRO AMARAL E SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 31,
+      "nome": "RAYNER FRANCIS LOPES DE ALMEIDA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 32,
+      "nome": "REGINALDO MOREIRA LÃO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 33,
+      "nome": "RICARDO DE OLIVEIRA SOUSA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 34,
+      "nome": "RONALDO PEREIRA CORDEIRO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 35,
+      "nome": "SIDNEY RAIMUNDO DA SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 36,
+      "nome": "WESLEY ANTONIO SENA DA SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 37,
+      "nome": "WESLEY LUCIO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 38,
+      "nome": "ANDRE LUIS GONÇALVES PEREIRA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\7cb1b227b6ab4fd79a94a77960bb5426.png",
+      "ativo": 1
+    },
+    {
+      "id": 39,
+      "nome": "BRUNO HENRIQUE MENDES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 40,
+      "nome": "CHARLES COSTA SANTOS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 41,
+      "nome": "DEVIS PENA DE OLIVEIRA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\25af8a51fcbf45b8aad57aefac7ffc0c.png",
+      "ativo": 1
+    },
+    {
+      "id": 42,
+      "nome": "EDER SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\4b83ea8307424be49c41b9e78ac432a3.png",
+      "ativo": 1
+    },
+    {
+      "id": 43,
+      "nome": "EDUARDO ANDRADE SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 44,
+      "nome": "ELDERSON JOSE GOMES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\f981410ce6864cf69c5d49e1d9da6da5.png",
+      "ativo": 1
+    },
+    {
+      "id": 45,
+      "nome": "EMERSON FELIPE MACHADO",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "fotos_colaboradores\\3dec42b5830d47d39b05a82a210a8091.png",
+      "ativo": 1
+    },
+    {
+      "id": 46,
+      "nome": "ERASMO ROBERTO LOPES GONÇALVES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 47,
+      "nome": "HIAGO HENRIQUE LOPES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 48,
+      "nome": "KENEDY DEIVISSIN LOPES PEREIRA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 49,
+      "nome": "LAENDER LOURENÇO DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 50,
+      "nome": "LUCAS GABRIEL DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 51,
+      "nome": "LUIS EDUARDO CUSTODIO COELHO",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 52,
+      "nome": "MARCELO DA CONCEIÇÃO SANTOS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 53,
+      "nome": "MARCOS PAULO MILAGRES DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 54,
+      "nome": "MARLON GERALDO ALVES SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 55,
+      "nome": "MAYCOLL LUCAS MENDES DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 56,
+      "nome": "ORMIR GONÇALVES BORGES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 57,
+      "nome": "PABLO HENRIQUE NOGUEIRA GONTIJO",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 0
+    },
+    {
+      "id": 58,
+      "nome": "REGINALDO LAURO SANTOS ABREU",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 59,
+      "nome": "RICHARD SANTOS LOPES",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 60,
+      "nome": "ROBERT JHONATHAN SILVA",
+      "funcao": "Motorista",
+      "observacao": "SOCIÁVEL !",
+      "foto": "fotos_colaboradores\\dcc9f86f3d0c47688cc9e0a97bde8dac.png",
+      "ativo": 1
+    },
+    {
+      "id": 61,
+      "nome": "RUAN CARLOS DIAS FRANCO DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 62,
+      "nome": "RYCHARD MARTINS DA SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 63,
+      "nome": "WELINGTON GUSTAVO SANTOS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 64,
+      "nome": "WEVERSON FERREIRA DOS SANTOS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 65,
+      "nome": "WARLEI ANANIAS",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 66,
+      "nome": "JOSE ANTONIO A SILVA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 67,
+      "nome": "ROGERIO DAS NEVES MEDEIROS SANTOS",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 68,
+      "nome": "PAULO HENRIQUE VERÇOSA LISBOA",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 69,
+      "nome": "FRETADO ( ALEX)",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 70,
+      "nome": "FRETADO (ANIVALDO)",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 71,
+      "nome": "GUILHERME ALVES SILVA",
+      "funcao": "Ajudante",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 72,
+      "nome": "ANIVALDO DUARTE",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    },
+    {
+      "id": 73,
+      "nome": "RAIMUNDO ADRIANO DO ROSARIO",
+      "funcao": "Motorista",
+      "observacao": "",
+      "foto": "",
+      "ativo": 1
+    }
+  ],
+  "caminhoes": [
+    {
+      "id": 7,
+      "placa": "EJB-4F85",
+      "modelo": "FORD/F350  G 1.500 T",
+      "observacao": "1.500 T",
+      "ativo": 1
+    },
+    {
+      "id": 8,
+      "placa": "EUX-6525",
+      "modelo": "VW/17.250 CNC",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 9,
+      "placa": "GOW-5H37",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 10,
+      "placa": "GVU-4H57",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 11,
+      "placa": "HAM-3C53",
+      "modelo": "M. BENZ/710",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 12,
+      "placa": "HDI-7C56",
+      "modelo": "VW/9.150 E CUMMINS",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 13,
+      "placa": "HHB-9E76",
+      "modelo": "VW/15.180 CNM",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 14,
+      "placa": "HDI-7H21",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 15,
+      "placa": "HLQ-2D58",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 16,
+      "placa": "HMQ-5B91",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 17,
+      "placa": "KPD-8B85",
+      "modelo": "VW/17.190",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 18,
+      "placa": "LBE-4G52",
+      "modelo": "M.BENZ",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 19,
+      "placa": "LMD-2I16",
+      "modelo": "VW/24.280 CRM 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 20,
+      "placa": "NYC-6H24",
+      "modelo": "VW/24.250 CNC 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 21,
+      "placa": "OPJ-7D41",
+      "modelo": "VW/15.190",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 22,
+      "placa": "PVD-1G23",
+      "modelo": "VW/24.280 CRM 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 23,
+      "placa": "PVS-3G72",
+      "modelo": "VW/15.190 CRM4X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 24,
+      "placa": "PXD-2C71",
+      "modelo": "VW/24.280 CRM 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 25,
+      "placa": "PYP-0E41",
+      "modelo": "WV/24.280 CRM 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 26,
+      "placa": "PYU-0G62",
+      "modelo": "VW/24.280 CRM 6X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 27,
+      "placa": "PZL-3B12",
+      "modelo": "VW/17.230 WORKER 4X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 28,
+      "placa": "SHI-1I12",
+      "modelo": "VW/11.180 DRC 4X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 29,
+      "placa": "SHF-2B15",
+      "modelo": "VW/11.180 DRC 4X2",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 30,
+      "placa": "SHJ-4B57",
+      "modelo": "DAF/CF FAZ 300",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 31,
+      "placa": "SHK-3H33",
+      "modelo": "DAF/CF FAZ 300",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 32,
+      "placa": "SIE-0C28",
+      "modelo": "DAF/XF FTS 480",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 33,
+      "placa": "GZO-40I43",
+      "modelo": "IVECO DALE 1.8T",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 34,
+      "placa": "PCD-7I11",
+      "modelo": "MB:",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 35,
+      "placa": "HMF9A43",
+      "modelo": "FIAT STRADA",
+      "observacao": "",
+      "ativo": 1
+    },
+    {
+      "id": 36,
+      "placa": "GNE7I47",
+      "modelo": "MB 709, FRET. ANIVALDO",
+      "observacao": "",
+      "ativo": 1
+    }
+  ]
+}

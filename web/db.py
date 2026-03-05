@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -12,6 +13,7 @@ REPORTS_DIR = Path(os.environ.get("JR_ESCALA_REPORTS_DIR", BASE_DIR / "reports")
 LOGO_PATH = Path(os.environ.get("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "img" / "logo-jr.png"))
 FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf"))
 RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
+SEED_DATA_PATH = Path(os.environ.get("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json"))
 
 
 def _activate_runtime_fallback() -> None:
@@ -42,6 +44,64 @@ def get_connection() -> sqlite3.Connection:
         conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
+
+
+def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
+    if not SEED_DATA_PATH.exists():
+        return
+
+    cur.execute("SELECT COUNT(*) FROM colaboradores;")
+    total_colaboradores = cur.fetchone()[0]
+    cur.execute("SELECT COUNT(*) FROM caminhoes;")
+    total_caminhoes = cur.fetchone()[0]
+    if total_colaboradores > 0 or total_caminhoes > 0:
+        return
+
+    try:
+        payload = json.loads(SEED_DATA_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+
+    colaboradores = payload.get("colaboradores") or []
+    caminhoes = payload.get("caminhoes") or []
+
+    for item in colaboradores:
+        nome = (item.get("nome") or "").strip()
+        funcao = (item.get("funcao") or "").strip()
+        if not nome or not funcao:
+            continue
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO colaboradores (id, nome, funcao, observacao, foto, ativo)
+            VALUES (?, ?, ?, ?, ?, ?);
+            """,
+            (
+                item.get("id"),
+                nome,
+                funcao,
+                (item.get("observacao") or "").strip(),
+                (item.get("foto") or "").strip(),
+                1 if item.get("ativo", 1) else 0,
+            ),
+        )
+
+    for item in caminhoes:
+        placa = (item.get("placa") or "").strip().upper()
+        if not placa:
+            continue
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO caminhoes (id, placa, modelo, observacao, ativo)
+            VALUES (?, ?, ?, ?, ?);
+            """,
+            (
+                item.get("id"),
+                placa,
+                (item.get("modelo") or "").strip(),
+                (item.get("observacao") or "").strip(),
+                1 if item.get("ativo", 1) else 0,
+            ),
+        )
 
 
 def init_db() -> None:
@@ -203,4 +263,5 @@ def init_db() -> None:
         colunas_folgas = {row[1] for row in cur.fetchall()}
         if "data_saida" not in colunas_folgas:
             cur.execute("ALTER TABLE folgas ADD COLUMN data_saida TEXT;")
+        _seed_core_data_if_empty(cur)
         conn.commit()
