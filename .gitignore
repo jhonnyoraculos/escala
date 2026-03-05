@@ -33,3 +33,9 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+*.lnk
+
+# Local temp files
+temp_code.txt
+build_log.txt
+screenshot_carreg.png
