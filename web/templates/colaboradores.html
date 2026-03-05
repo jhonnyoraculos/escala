@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Colaboradores | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Colaboradores</h2>
+    <span class="badge">{{ registros|length }} colaboradores</span>
+  </div>
+
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <input type="hidden" name="colaborador_id" value="{{ edit_item.id if edit_item }}" />
+      <input type="hidden" name="foto_atual" value="{{ edit_item.foto if edit_item else '' }}" />
+      {% set funcoes = ["Motorista", "Ajudante"] %}
+      <div class="grid three">
+        <div class="form-row">
+          <label>Nome</label>
+          <input name="nome" value="{{ edit_item.nome if edit_item else '' }}" required />
+        </div>
+        <div class="form-row">
+          <label>Função</label>
+          <select name="funcao" required>
+            <option value="" disabled {% if not edit_item or edit_item.funcao not in funcoes %}selected{% endif %}>Selecionar função</option>
+            {% for funcao in funcoes %}
+              <option value="{{ funcao }}" {% if edit_item and edit_item.funcao == funcao %}selected{% endif %}>{{ funcao }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Foto</label>
+          <input type="file" name="foto" accept="image/*" />
+        </div>
+        {% if edit_item and edit_item.foto %}
+          <label class="inline">
+            <input type="checkbox" name="remover_foto" />
+            Remover foto atual
+          </label>
+        {% endif %}
+        <label class="inline">
+          <input type="checkbox" name="ativo" {% if not edit_item or edit_item.ativo %}checked{% endif %} />
+          Ativo
+        </label>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('colaboradores') }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Foto</th>
+          <th>Nome</th>
+          <th>Função</th>
+          <th>Obs.</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>
+              {% if item.foto %}
+                <img src="{{ url_for('uploads', filename=item.foto) }}" alt="foto" style="width:36px;height:36px;border-radius:10px;object-fit:cover;" />
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{{ item.nome }}</td>
+            <td>{{ item.funcao }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td>{{ 'Ativo' if item.ativo else 'Inativo' }}</td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('colaboradores', edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('desativar_colaborador', colaborador_id=item.id) }}" data-confirm="Desativar colaborador?">
+                <button class="button danger" type="submit">Desativar</button>
+              </form>
+              <form method="post" action="{{ url_for('excluir_colaborador', colaborador_id=item.id) }}" data-confirm="Excluir colaborador e remover vínculos (folgas, férias e bloqueios)?">
+                <button class="button outline" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">Nenhum colaborador cadastrado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

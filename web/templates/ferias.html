@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Férias | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Férias</h2>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="ferias_id" value="{{ edit_item.id if edit_item }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Colaborador</label>
+          <select name="colaborador_id" required>
+            {% for col in colaboradores %}
+              {% set bloqueado = col.id in disponibilidade.motoristas or col.id in disponibilidade.ajudantes %}
+              <option value="{{ col.id }}"
+                {% if edit_item and edit_item.colaborador_id == col.id %}selected{% endif %}
+                {% if bloqueado and not (edit_item and edit_item.colaborador_id == col.id) %}disabled{% endif %}
+              >
+                {{ col.nome }} ({{ col.funcao }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Data início</label>
+          <input
+            type="date"
+            name="data_inicio"
+            value="{{ edit_item.data_inicio if edit_item else data_inicio_param }}"
+            required
+            data-redirect-param="data_inicio"
+            data-redirect-extra="data_fim"
+            {% if edit_item %}data-redirect-edit-id="{{ edit_item.id }}"{% endif %}
+          />
+        </div>
+        <div class="form-row">
+          <label>Data fim</label>
+          <input type="date" name="data_fim" value="{{ edit_item.data_fim if edit_item else data_fim_param }}" required />
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('ferias') }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Colaborador</th>
+          <th>Início</th>
+          <th>Fim</th>
+          <th>Obs.</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>
+              <div class="inline">
+                {% if item.foto %}
+                  <img class="avatar-sm" src="{{ url_for('uploads', filename=item.foto) }}" alt="foto" />
+                {% else %}
+                  <span class="avatar-fallback">{{ item.nome[:1] }}</span>
+                {% endif %}
+                <span>{{ item.nome }}</span>
+              </div>
+            </td>
+            <td>{{ item.data_inicio }}</td>
+            <td>{{ item.data_fim }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td><span class="status {{ item.status_class }}">{{ item.status }}</span></td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('ferias', edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_ferias', ferias_id=item.id) }}" data-confirm="Excluir férias?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6">Nenhum período de férias cadastrado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

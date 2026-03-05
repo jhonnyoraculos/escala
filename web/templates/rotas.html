@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Rotas Semanais | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Rotas Semanais</h2>
+    <span class="badge">{{ dia_semana }}</span>
+  </div>
+
+  <div class="card soft">
+    <form method="get" class="actions inline">
+      <div class="form-row">
+        <label>Dia da semana</label>
+        <select name="dia" onchange="this.form.submit()">
+          {% for chave, label in dias_semana %}
+            <option value="{{ chave }}" {% if chave == dia_semana %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="button outline" type="submit">Atualizar</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="rota_id" value="{{ edit_item.id if edit_item }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Dia da semana</label>
+          <select name="dia_semana">
+            {% for chave, label in dias_semana %}
+              <option value="{{ chave }}" {% if edit_item and edit_item.dia_semana == chave %}selected{% elif not edit_item and chave == dia_semana %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Rota</label>
+          <input name="rota" value="{{ edit_item.rota if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Destino</label>
+          <input name="destino" value="{{ edit_item.destino if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('rotas_semanais', dia=dia_semana) }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Rota</th>
+          <th>Destino</th>
+          <th>Observação</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>{{ item.rota }}</td>
+            <td>{{ item.destino or '-' }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('rotas_semanais', dia=dia_semana, edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_rota_semana', rota_id=item.id, dia=dia_semana) }}" data-confirm="Excluir rota?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">Nenhuma rota cadastrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

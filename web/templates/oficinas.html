@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Oficinas | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Oficinas</h2>
+    <span class="badge">Data base {{ data_iso_para_br(data_iso) }}</span>
+  </div>
+
+  <div class="card soft">
+    <form method="get" class="actions inline">
+      <div class="form-row">
+        <label>Data</label>
+        <input type="date" name="data" value="{{ data_iso }}" />
+      </div>
+      <div class="form-row">
+        <label>Data saída</label>
+        <input type="date" name="data_saida" value="{{ data_saida or '' }}" />
+      </div>
+      <button class="button outline" type="submit">Atualizar</button>
+      <a class="button ghost" href="{{ url_for('relatorio_oficinas', data=data_iso, data_saida=data_saida) }}">Gerar relatório</a>
+    </form>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="oficina_id" value="{{ edit_item.id if edit_item }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Data</label>
+          <input type="date" name="data" value="{{ edit_item.data if edit_item else data_iso }}" />
+        </div>
+        <div class="form-row">
+          <label>Data saída</label>
+          <input type="date" name="data_saida" value="{{ edit_item.data_saida if edit_item and edit_item.data_saida else (data_saida or '') }}" />
+        </div>
+        <div class="form-row">
+          <label>Placa</label>
+          <select name="placa" required class="select-split js-avatar-select">
+            {% for cam in caminhoes %}
+              {% set cam_pl = cam.placa.upper() %}
+              {% if cam_pl not in disponibilidade.caminhoes or (edit_item and edit_item.placa == cam_pl) %}
+                <option value="{{ cam_pl }}" {% if edit_item and edit_item.placa == cam_pl %}selected{% endif %}>{{ cam_pl }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Motorista</label>
+          <select name="motorista_id" class="js-avatar-select">
+            <option value="" data-avatar="">{{ VALOR_SEM_MOTORISTA }}</option>
+            {% for motorista in motoristas %}
+              {% set foto_url = url_for('uploads', filename=motorista.foto) if motorista.foto else '' %}
+              <option value="{{ motorista.id }}" data-avatar="{{ foto_url }}" {% if edit_item and edit_item.motorista_id == motorista.id %}selected{% endif %} {% if motorista.id in disponibilidade.motoristas %}disabled{% endif %}>{{ motorista.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Observação extra</label>
+          <input name="observacao_extra" value="{{ (edit_item.observacao_extra or '') if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Cor da observação</label>
+          <select name="observacao_cor">
+            <option value="">Sem cor</option>
+            {% for label, cor in OBS_MARCADORES %}
+              {% if cor %}
+                <option value="{{ cor }}" {% if edit_item and edit_item.observacao_cor == cor %}selected{% endif %}>{{ label }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('oficinas', data=data_iso) }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Placa</th>
+          <th>Motorista</th>
+          <th>Observação</th>
+          <th>Saída</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>{{ item.placa }}</td>
+            <td>{{ item.motorista_nome or '-' }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td>{{ item.data_saida or '-' }}</td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('oficinas', data=data_iso, edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_oficina', oficina_id=item.id, data=data_iso) }}" data-confirm="Excluir oficina?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">Nenhuma oficina cadastrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Caminhões | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Caminhões</h2>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="caminhao_id" value="{{ edit_item.id if edit_item }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Placa</label>
+          <input name="placa" value="{{ edit_item.placa if edit_item else '' }}" required />
+        </div>
+        <div class="form-row">
+          <label>Modelo</label>
+          <input name="modelo" value="{{ edit_item.modelo if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+        <label class="inline">
+          <input type="checkbox" name="ativo" {% if not edit_item or edit_item.ativo %}checked{% endif %} />
+          Ativo
+        </label>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('caminhoes') }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Placa</th>
+          <th>Modelo</th>
+          <th>Observação</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>{{ item.placa }}</td>
+            <td>{{ item.modelo or '-' }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td>{{ 'Ativo' if item.ativo else 'Inativo' }}</td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('caminhoes', edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_caminhao', caminhao_id=item.id) }}" data-confirm="Excluir caminhão?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">Nenhum caminhão cadastrado.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

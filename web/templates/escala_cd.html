@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Escala (CD) | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Escala (CD)</h2>
+    <span class="badge">Data base {{ data_iso_para_br(data_iso) }}</span>
+  </div>
+
+  <div class="card soft">
+    <form method="get" class="actions inline">
+      <div class="form-row">
+        <label>Data</label>
+        <input type="date" name="data" value="{{ data_iso }}" />
+      </div>
+      <div class="form-row">
+        <label>Data saída</label>
+        <input type="date" name="data_saida" value="{{ data_saida or '' }}" />
+      </div>
+      <button class="button outline" type="submit">Atualizar</button>
+      <a class="button ghost" href="{{ url_for('relatorio_escala_cd', data=data_iso, data_saida=data_saida) }}">Gerar relatório</a>
+    </form>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="escala_id" value="{{ edit_item.id if edit_item }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Data</label>
+          <input type="date" name="data" value="{{ edit_item.data if edit_item else data_iso }}" />
+        </div>
+        <div class="form-row">
+          <label>Motorista</label>
+          <select name="motorista_id" class="js-avatar-select">
+            <option value="" data-avatar="">{{ VALOR_SEM_MOTORISTA }}</option>
+            {% for motorista in motoristas %}
+              {% set foto_url = url_for('uploads', filename=motorista.foto) if motorista.foto else '' %}
+              <option value="{{ motorista.id }}" data-avatar="{{ foto_url }}" {% if edit_item and edit_item.motorista_id == motorista.id %}selected{% endif %} {% if motorista.id in disponibilidade.motoristas %}disabled{% endif %}>{{ motorista.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Ajudante</label>
+          <select name="ajudante_id" class="js-avatar-select">
+            <option value="" data-avatar="">{{ VALOR_SEM_AJUDANTE }}</option>
+            {% for ajudante in ajudantes %}
+              {% set foto_url = url_for('uploads', filename=ajudante.foto) if ajudante.foto else '' %}
+              <option value="{{ ajudante.id }}" data-avatar="{{ foto_url }}" {% if edit_item and edit_item.ajudante_id == ajudante.id %}selected{% endif %} {% if ajudante.id in disponibilidade.ajudantes %}disabled{% endif %}>{{ ajudante.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Observação</label>
+          <input name="observacao" value="{{ edit_item.observacao if edit_item else '' }}" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('escala_cd', data=data_iso) }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Motorista</th>
+          <th>Ajudante</th>
+          <th>Observação</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>{{ item.motorista_nome or '-' }}</td>
+            <td>{{ item.ajudante_nome or '-' }}</td>
+            <td>{{ item.observacao or '-' }}</td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('escala_cd', data=data_iso, edit_id=item.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_escala_cd', escala_id=item.id, data=data_iso) }}" data-confirm="Excluir escala?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">Nenhuma escala cadastrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

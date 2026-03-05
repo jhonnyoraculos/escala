@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}LOG | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>LOG de escalas</h2>
+    <span class="badge">Monitoramento de rotas</span>
+  </div>
+
+  <div class="card soft">
+    <form method="get" class="grid three">
+      <div class="form-row">
+        <label>Data início</label>
+        <input type="date" name="data_inicio" value="{{ filtros.data_inicio or '' }}" />
+      </div>
+      <div class="form-row">
+        <label>Data fim</label>
+        <input type="date" name="data_fim" value="{{ filtros.data_fim or '' }}" />
+      </div>
+      <div class="form-row">
+        <label>Status</label>
+        <select name="status">
+          {% for opcao in ["Em andamento", "Finalizados", "Todos"] %}
+            <option value="{{ opcao }}" {% if filtros.status == opcao %}selected{% endif %}>{{ opcao }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Motorista</label>
+        <select name="motorista_id" class="js-avatar-select">
+          <option value="">Todos</option>
+          {% for m in motoristas %}
+            <option value="{{ m.id }}" {% if filtros.motorista_id == m.id %}selected{% endif %}>{{ m.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Placa</label>
+        <select name="placa" class="js-avatar-select">
+          <option value="">Todas</option>
+          {% for pl in placas %}
+            {% if pl %}
+              <option value="{{ pl }}" {% if filtros.placa == pl %}selected{% endif %}>{{ pl }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="actions">
+        <button class="button outline" type="submit">Aplicar filtros</button>
+        <a class="button ghost" href="{{ url_for('log_export', **query_args) }}">Exportar Excel</a>
+      </div>
+    </form>
+  </div>
+
+  {% if registros %}
+    {% for item in registros %}
+      <div class="card">
+        <div class="grid two">
+          <div>
+            <strong>{{ item.data_br }}</strong> - {{ item.rota }} - {{ item.placa }}
+            <div>{{ item.motorista }} | {{ item.ajudante }}</div>
+          </div>
+          <div>
+            <div class="status {% if item.status == 'Finalizado' %}ok{% else %}warn{% endif %}">{{ item.status }}</div>
+            <div>{{ item.status_texto }}</div>
+          </div>
+        </div>
+        <div class="grid three" style="margin-top:10px;">
+          <div>Saída: {{ item.data_saida_br }}</div>
+          <div>Previsto: {{ item.data_fim_br }}</div>
+          <div>Planejado: {{ item.duracao_planejada }} | Efetivo: {{ item.duracao_efetiva }}</div>
+        </div>
+        <div style="margin-top:6px;">Resumo: {{ item.resumo }}</div>
+
+        <form method="post" action="{{ url_for('log_colaboradores', carregamento_id=item.id, **query_args) }}" class="grid three" style="margin-top:12px;">
+          <div class="form-row">
+            <label>Motorista</label>
+            <select name="motorista_id" class="js-avatar-select">
+              <option value="" data-avatar="">{{ VALOR_SEM_MOTORISTA }}</option>
+              {% for motorista in motoristas %}
+                {% set foto_url = url_for('uploads', filename=motorista.foto) if motorista.foto else '' %}
+                <option value="{{ motorista.id }}"
+                  data-avatar="{{ foto_url }}"
+                  {% if item.motorista_id == motorista.id %}selected{% endif %}
+                >
+                  {{ motorista.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-row">
+            <label>Ajudante</label>
+            <select name="ajudante_id" class="js-avatar-select">
+              <option value="" data-avatar="">{{ VALOR_SEM_AJUDANTE }}</option>
+              {% for ajudante in ajudantes %}
+                {% set foto_url = url_for('uploads', filename=ajudante.foto) if ajudante.foto else '' %}
+                <option value="{{ ajudante.id }}"
+                  data-avatar="{{ foto_url }}"
+                  {% if item.ajudante_id == ajudante.id %}selected{% endif %}
+                >
+                  {{ ajudante.nome }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="actions">
+            <button class="button outline" type="submit">Atualizar colaboradores</button>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('log_ajuste', carregamento_id=item.id) }}" class="grid three" style="margin-top:12px;">
+          <div class="form-row">
+            <label>Nova duração (dias)</label>
+            <input type="number" name="duracao_nova" min="-1" step="1" />
+          </div>
+          <div class="form-row">
+            <label>Obs. ajuste</label>
+            <input name="observacao" />
+          </div>
+          <div class="actions">
+            <button class="button outline" type="submit">Registrar ajuste</button>
+          </div>
+        </form>
+        <div class="actions" style="margin-top:10px;">
+          {% if item.status != "Finalizado" %}
+            <form method="post" action="{{ url_for('log_liberar', carregamento_id=item.id, **query_args) }}" data-confirm="Liberar carregamento agora?">
+              <button class="button success" type="submit">Liberar agora</button>
+            </form>
+          {% endif %}
+          <form method="post" action="{{ url_for('log_excluir', carregamento_id=item.id, **query_args) }}" data-confirm="Excluir carregamento?">
+            <button class="button danger" type="submit">Excluir carregamento</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="card">Nenhum registro encontrado para os filtros.</div>
+  {% endif %}
+{% endblock %}

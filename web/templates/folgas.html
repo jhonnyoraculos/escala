@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Folgas | JR Escala{% endblock %}
+{% block content %}
+  <div class="section-title">
+    <h2>Folgas</h2>
+    <span class="badge">Data base {{ data_iso_para_br(data_iso) }}</span>
+  </div>
+
+  <div class="card soft">
+    <form method="get" class="actions inline">
+      <div class="form-row">
+        <label>Data</label>
+        <input type="date" name="data" value="{{ data_iso }}" />
+      </div>
+        <div class="form-row">
+          <label>Data saída</label>
+          <input type="date" name="data_saida" value="{{ data_saida or '' }}" readonly />
+        </div>
+      <button class="button outline" type="submit">Atualizar</button>
+      <a class="button ghost" href="{{ url_for('relatorio_folgas', data=data_iso, data_saida=data_saida) }}">Gerar relatório</a>
+    </form>
+  </div>
+
+  <div class="card">
+    <form method="post">
+      <input type="hidden" name="folga_id" value="{{ edit_item.folga_id if edit_item }}" />
+      <input type="hidden" name="data_saida" value="{{ edit_item.data_saida if edit_item and edit_item.data_saida else (data_saida or '') }}" />
+      <div class="grid three">
+        <div class="form-row">
+          <label>Data</label>
+          <input type="date" name="data" value="{{ edit_item.data if edit_item else data_iso }}" />
+        </div>
+        <div class="form-row">
+          <label>Data fim (opcional)</label>
+          <input type="date" name="data_fim" value="{{ edit_item.data_fim if edit_item else '' }}" />
+        </div>
+        <div class="form-row">
+          <label>Colaborador</label>
+          <select name="colaborador_id" class="js-avatar-select" required>
+            <option value="" data-avatar="">Sem motorista ou ajudante</option>
+            {% for col in colaboradores %}
+              {% set foto_url = url_for('uploads', filename=col.foto) if col.foto else '' %}
+              {% set bloqueado = col.id in disponibilidade.motoristas or col.id in disponibilidade.ajudantes %}
+              <option value="{{ col.id }}" data-avatar="{{ foto_url }}"
+                {% if edit_item and edit_item.colaborador_id == col.id %}selected{% endif %}
+                {% if bloqueado and not (edit_item and edit_item.colaborador_id == col.id) %}disabled{% endif %}
+              >
+                {{ col.nome }} ({{ col.funcao }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="button primary" type="submit">{% if edit_item %}Atualizar{% else %}Salvar{% endif %}</button>
+        {% if edit_item %}
+          <a class="button ghost" href="{{ url_for('folgas', data=data_iso) }}">Cancelar</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Colaborador</th>
+          <th>Função</th>
+          <th>Período</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in registros %}
+          <tr>
+            <td>{{ item.nome }}</td>
+            <td>{{ item.funcao }}</td>
+            <td>
+              {% set fim = item.data_fim or data_saida %}
+              {% if fim and fim != item.data %}
+                {{ item.data }} -> {{ fim }}
+              {% else %}
+                {{ item.data }}
+              {% endif %}
+            </td>
+            <td class="inline">
+              <a class="button ghost" href="{{ url_for('folgas', data=data_iso, edit_id=item.folga_id) }}">Editar</a>
+              <form method="post" action="{{ url_for('excluir_folga', folga_id=item.folga_id, data=data_iso) }}" data-confirm="Excluir folga?">
+                <button class="button danger" type="submit">Excluir</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="4">Nenhuma folga cadastrada.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

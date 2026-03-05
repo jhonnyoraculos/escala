@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}JR Escala{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=STATIC_VERSION) }}" />
+    <script src="{{ url_for('static', filename='js/app.js', v=STATIC_VERSION) }}" defer></script>
+  </head>
+  <body>
+    <div class="bg-pattern"></div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='img/logo-jr.png') }}" alt="JR" />
+          <div>
+            <h1>JR Escala</h1>
+            <span>Carregamentos, equipes e relatórios</span>
+          </div>
+        </div>
+        <div class="top-meta">
+          <div>{{ data_iso_para_extenso(TODAY_ISO) }}</div>
+          <div>Sistema web</div>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        {% for key, label, path in NAV_ITEMS %}
+          {% set active = request.path.startswith(path) %}
+          <a href="{{ path }}" class="{% if active %}active{% endif %}">{{ label }}</a>
+        {% endfor %}
+      </nav>
+
+      <main class="content">
+        <div id="flash-area">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <div class="assistant-stack">
+      <div class="assistant-rotas" data-rotas-assistente data-base-date="{{ CARREG_DATA_ISO }}">
+        <button class="assistant-rotas__toggle" type="button">
+          Rotas pendentes
+          <span class="assistant-rotas__count">0</span>
+        </button>
+        <div class="assistant-rotas__panel">
+          <div class="assistant-rotas__status">Carregando...</div>
+          <ul class="assistant-rotas__list"></ul>
+          <div class="assistant-rotas__actions">
+            <button class="button outline assistant-rotas__refresh" type="button">Atualizar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="assistant-disponiveis" data-disponiveis-assistente data-base-date="{{ CARREG_DATA_ISO }}">
+        <button class="assistant-disponiveis__toggle" type="button">
+          Disponíveis do dia
+          <span class="assistant-disponiveis__count">0</span>
+        </button>
+        <div class="assistant-disponiveis__panel">
+          <div class="assistant-disponiveis__status">Carregando...</div>
+          <div class="assistant-disponiveis__group">
+            <div class="assistant-disponiveis__title">Motoristas</div>
+            <ul class="assistant-disponiveis__list" data-list-motoristas></ul>
+          </div>
+          <div class="assistant-disponiveis__group">
+            <div class="assistant-disponiveis__title">Ajudantes</div>
+            <ul class="assistant-disponiveis__list" data-list-ajudantes></ul>
+          </div>
+          <div class="assistant-disponiveis__actions">
+            <button class="button outline assistant-disponiveis__refresh" type="button">Atualizar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
