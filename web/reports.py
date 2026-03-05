@@ -8,7 +8,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFont
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from .db import FONT_PATH, LOGO_PATH, REPORTS_DIR
+from . import db as dbmod
 from .services import (
     COR_AZUL,
     COR_AZUL_GRADIENTE_FIM,
@@ -25,7 +25,7 @@ from .services import (
 def carregar_fonte(tamanho: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     # Use a single variable font with weight variation when available.
     try:
-        fonte = ImageFont.truetype(str(FONT_PATH), tamanho)
+        fonte = ImageFont.truetype(str(dbmod.FONT_PATH), tamanho)
         if bold:
             try:
                 fonte.set_variation_by_name("Bold")
@@ -140,9 +140,10 @@ def exportar_log_para_excel(registros: list[dict]) -> Path:
                 item.get("resumo"),
             ]
         )
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    reports_dir = dbmod.REPORTS_DIR
+    reports_dir.mkdir(parents=True, exist_ok=True)
     nome_arquivo = f"log_escala_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    caminho = REPORTS_DIR / nome_arquivo
+    caminho = reports_dir / nome_arquivo
     wb.save(caminho)
     return caminho
 
@@ -184,9 +185,9 @@ def exportar_relatorio_imagem(
 
     draw.rectangle([0, 0, largura, header_altura], fill=COR_AZUL)
     draw.rectangle([0, 0, 360, header_altura], fill=COR_VERMELHA)
-    if LOGO_PATH.exists():
+    if dbmod.LOGO_PATH.exists():
         try:
-            with Image.open(LOGO_PATH) as logo_img:
+            with Image.open(dbmod.LOGO_PATH) as logo_img:
                 logo_rel = logo_img.convert("RGBA").resize((35, 35))
             imagem.paste(logo_rel, (25, 15), logo_rel)
         except OSError:
@@ -297,8 +298,9 @@ def exportar_relatorio_imagem(
     )
 
     nome_arquivo = f"relatorio_JR_{aba_nome}_{data_referencia}.png"
-    caminho = REPORTS_DIR / nome_arquivo
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    reports_dir = dbmod.REPORTS_DIR
+    caminho = reports_dir / nome_arquivo
+    reports_dir.mkdir(parents=True, exist_ok=True)
     imagem.save(caminho)
     return caminho
 
@@ -396,9 +398,9 @@ def gerar_relatorio_moderno(
     imagem.paste(grad, (0, 0))
 
     logo_pos = (margem, 35)
-    if LOGO_PATH.exists():
+    if dbmod.LOGO_PATH.exists():
         try:
-            with Image.open(LOGO_PATH) as logo_img:
+            with Image.open(dbmod.LOGO_PATH) as logo_img:
                 logo_rel = logo_img.convert("RGBA").resize((80, 80))
             imagem.paste(logo_rel, logo_pos, logo_rel)
         except OSError:
@@ -501,8 +503,9 @@ def gerar_relatorio_moderno(
 
     arquivo_base = arquivo_data_iso or data_principal_iso or date.today().isoformat()
     nome_arquivo = f"relatorio_JR_{arquivo_stub}_{arquivo_base}.png"
-    caminho = REPORTS_DIR / nome_arquivo
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    reports_dir = dbmod.REPORTS_DIR
+    caminho = reports_dir / nome_arquivo
+    reports_dir.mkdir(parents=True, exist_ok=True)
     imagem.save(caminho)
     return caminho
 
