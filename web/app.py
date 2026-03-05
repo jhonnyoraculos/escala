@@ -309,7 +309,7 @@ def excluir_carregamento(carregamento_id: int):
         if registro:
             svc.registrar_rota_suprimida(registro.get("data"), registro.get("rota"))
         svc.remover_carregamento_completo(carregamento_id)
-        flash("Carregamento excluído.", "success")
+        flash("Carregamento excluido.", "success")
     except Exception as exc:
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("carregamentos", data=data_iso))
@@ -470,11 +470,16 @@ def oficinas():
 
 @app.post("/oficinas/<int:oficina_id>/excluir")
 def excluir_oficina(oficina_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     data_iso = _data_param("data")
     try:
         svc.excluir_oficina(oficina_id)
-        flash("Oficina excluída.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Oficina excluida."})
+        flash("Oficina excluida.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("oficinas", data=data_iso))
 
@@ -563,11 +568,16 @@ def folgas():
 
 @app.post("/folgas/<int:folga_id>/excluir")
 def excluir_folga(folga_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     data_iso = _data_param("data")
     try:
         svc.remover_folga(folga_id)
-        flash("Folga excluída.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Folga excluida."})
+        flash("Folga excluida.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("folgas", data=data_iso))
 
@@ -640,11 +650,16 @@ def escala_cd():
 
 @app.post("/escala-cd/<int:escala_id>/excluir")
 def excluir_escala_cd(escala_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     data_iso = _data_param("data")
     try:
         svc.excluir_escala_cd(escala_id)
-        flash("Escala (CD) excluída.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Escala CD excluida."})
+        flash("Escala CD excluida.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("escala_cd", data=data_iso))
 
@@ -713,11 +728,16 @@ def rotas_semanais():
 
 @app.post("/rotas-semanais/<int:rota_id>/excluir")
 def excluir_rota_semana(rota_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     dia = svc.normalizar_dia_semana(request.args.get("dia"))
     try:
         svc.remover_rota_semana(rota_id)
-        flash("Rota semanal excluída.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Rota semanal excluida."})
+        flash("Rota semanal excluida.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("rotas_semanais", dia=dia))
 
@@ -759,10 +779,15 @@ def caminhoes():
 
 @app.post("/caminhoes/<int:caminhao_id>/excluir")
 def excluir_caminhao(caminhao_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     try:
         svc.remover_caminhao(caminhao_id)
-        flash("Caminhão excluído.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Caminhao excluido."})
+        flash("Caminhao excluido.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("caminhoes"))
 
@@ -836,10 +861,15 @@ def ferias():
 
 @app.post("/ferias/<int:ferias_id>/excluir")
 def excluir_ferias(ferias_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     try:
         svc.remover_ferias(ferias_id)
-        flash("Férias excluídas.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Ferias excluidas."})
+        flash("Ferias excluidas.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("ferias"))
 
@@ -905,8 +935,8 @@ def excluir_colaborador(colaborador_id: int):
                 foto_abs.unlink()
         if is_fetch:
             total = len(svc.listar_colaboradores(ativos_only=False))
-            return jsonify({"ok": True, "message": "Colaborador excluído.", "total": total})
-        flash("Colaborador excluído.", "success")
+            return jsonify({"ok": True, "message": "Colaborador excluido.", "total": total})
+        flash("Colaborador excluido.", "success")
     except Exception as exc:
         if is_fetch:
             return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
@@ -1082,10 +1112,15 @@ def log_liberar(carregamento_id: int):
 
 @app.post("/log/<int:carregamento_id>/excluir")
 def log_excluir(carregamento_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     try:
         svc.remover_carregamento_completo(carregamento_id)
-        flash("Carregamento excluído.", "success")
+        if is_fetch:
+            return jsonify({"ok": True, "message": "Carregamento excluido."})
+        flash("Carregamento excluido.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("log_view", **request.args.to_dict()))
 

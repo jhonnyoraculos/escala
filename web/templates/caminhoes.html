@@ -56,7 +56,7 @@
             <td>{{ 'Ativo' if item.ativo else 'Inativo' }}</td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('caminhoes', edit_id=item.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_caminhao', caminhao_id=item.id) }}" data-confirm="Excluir caminhão?">
+              <form method="post" action="{{ url_for('excluir_caminhao', caminhao_id=item.id) }}" data-confirm="Excluir caminhão?" data-ajax-delete data-empty-colspan="5" data-empty-text="Nenhum caminhão cadastrado.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>

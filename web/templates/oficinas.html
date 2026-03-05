@@ -104,7 +104,7 @@
             <td>{{ item.data_saida or '-' }}</td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('oficinas', data=data_iso, edit_id=item.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_oficina', oficina_id=item.id, data=data_iso) }}" data-confirm="Excluir oficina?">
+              <form method="post" action="{{ url_for('excluir_oficina', oficina_id=item.id, data=data_iso) }}" data-confirm="Excluir oficina?" data-ajax-delete data-empty-colspan="5" data-empty-text="Nenhuma oficina cadastrada.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>

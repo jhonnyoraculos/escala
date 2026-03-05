@@ -82,7 +82,7 @@
             <td>{{ item.observacao or '-' }}</td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('escala_cd', data=data_iso, edit_id=item.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_escala_cd', escala_id=item.id, data=data_iso) }}" data-confirm="Excluir escala?">
+              <form method="post" action="{{ url_for('excluir_escala_cd', escala_id=item.id, data=data_iso) }}" data-confirm="Excluir escala?" data-ajax-delete data-empty-colspan="4" data-empty-text="Nenhuma escala cadastrada.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>

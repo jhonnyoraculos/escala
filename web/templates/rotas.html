@@ -73,7 +73,7 @@
             <td>{{ item.observacao or '-' }}</td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('rotas_semanais', dia=dia_semana, edit_id=item.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_rota_semana', rota_id=item.id, dia=dia_semana) }}" data-confirm="Excluir rota?">
+              <form method="post" action="{{ url_for('excluir_rota_semana', rota_id=item.id, dia=dia_semana) }}" data-confirm="Excluir rota?" data-ajax-delete data-empty-colspan="4" data-empty-text="Nenhuma rota cadastrada.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>

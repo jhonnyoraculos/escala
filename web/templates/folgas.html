@@ -86,7 +86,7 @@
             </td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('folgas', data=data_iso, edit_id=item.folga_id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_folga', folga_id=item.folga_id, data=data_iso) }}" data-confirm="Excluir folga?">
+              <form method="post" action="{{ url_for('excluir_folga', folga_id=item.folga_id, data=data_iso) }}" data-confirm="Excluir folga?" data-ajax-delete data-empty-colspan="4" data-empty-text="Nenhuma folga cadastrada.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>

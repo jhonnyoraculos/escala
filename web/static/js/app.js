@@ -592,6 +592,100 @@ const initAjaxColaboradores = () => {
   });
 };
 
+const initAjaxDeletes = () => {
+  document.addEventListener("submit", async (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (!form.matches("form[data-ajax-delete]")) {
+      return;
+    }
+
+    event.preventDefault();
+    const action = form.getAttribute("action");
+    if (!action) {
+      return;
+    }
+
+    const button = form.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+    }
+
+    const showFlash = (message, category = "success") => {
+      const flashArea = document.getElementById("flash-area");
+      if (!flashArea) {
+        return;
+      }
+      flashArea.innerHTML = "";
+      const flash = document.createElement("div");
+      flash.className = `flash ${category}`;
+      flash.textContent = message;
+      flashArea.appendChild(flash);
+    };
+
+    try {
+      const response = await fetch(action, {
+        method: "POST",
+        body: new FormData(form),
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "fetch" },
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.ok) {
+        const message = (payload && payload.message) || "Nao foi possivel excluir.";
+        showFlash(message, "error");
+        if (button) {
+          button.disabled = false;
+        }
+        return;
+      }
+
+      const removeClosest = form.dataset.removeClosest || "tr";
+      const target = form.closest(removeClosest) || form;
+      const parent = target.parentElement;
+      target.remove();
+
+      if (removeClosest === "tr" && parent && !parent.querySelector("tr")) {
+        const emptyRow = document.createElement("tr");
+        const emptyCell = document.createElement("td");
+        const emptyColspan = Number(form.dataset.emptyColspan || "1");
+        emptyCell.colSpan = Number.isFinite(emptyColspan) && emptyColspan > 0 ? emptyColspan : 1;
+        emptyCell.textContent = form.dataset.emptyText || "Nenhum registro cadastrado.";
+        emptyRow.appendChild(emptyCell);
+        parent.appendChild(emptyRow);
+      }
+
+      if (form.dataset.emptyTarget) {
+        const emptyTarget = document.querySelector(form.dataset.emptyTarget);
+        const emptyCheck = form.dataset.emptyCheck || "[data-ajax-item]";
+        if (emptyTarget && !emptyTarget.querySelector(emptyCheck)) {
+          const emptyText = form.dataset.emptyText || "Nenhum registro encontrado.";
+          emptyTarget.innerHTML = `<div class=\"card\">${emptyText}</div>`;
+        }
+      }
+
+      showFlash(payload.message || "Excluido com sucesso.", "success");
+      if (rotasAssistantState.refresh) {
+        rotasAssistantState.refresh();
+      }
+      if (disponiveisAssistantState.refresh) {
+        disponiveisAssistantState.refresh();
+      }
+    } catch (err) {
+      showFlash("Erro de conexao ao excluir.", "error");
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  });
+};
+
 const initRedirectOnChange = () => {
   document.querySelectorAll("[data-redirect-param]").forEach((input) => {
     if (input.dataset.redirectReady) {
@@ -699,6 +793,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initAvatarSelects();
   initAjaxCarregamentos();
   initAjaxColaboradores();
+  initAjaxDeletes();
   initRedirectOnChange();
   initMotAjToggle();
   initRotasAssistant();

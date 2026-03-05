@@ -51,9 +51,10 @@
     </form>
   </div>
 
+  <div id="log-results">
   {% if registros %}
     {% for item in registros %}
-      <div class="card">
+      <div class="card" data-ajax-item data-log-entry>
         <div class="grid two">
           <div>
             <strong>{{ item.data_br }}</strong> - {{ item.rota }} - {{ item.placa }}
@@ -126,7 +127,7 @@
               <button class="button success" type="submit">Liberar agora</button>
             </form>
           {% endif %}
-          <form method="post" action="{{ url_for('log_excluir', carregamento_id=item.id, **query_args) }}" data-confirm="Excluir carregamento?">
+          <form method="post" action="{{ url_for('log_excluir', carregamento_id=item.id, **query_args) }}" data-confirm="Excluir carregamento?" data-ajax-delete data-remove-closest="[data-log-entry]" data-empty-target="#log-results" data-empty-check="[data-log-entry]" data-empty-text="Nenhum registro encontrado para os filtros.">
             <button class="button danger" type="submit">Excluir carregamento</button>
           </form>
         </div>
@@ -135,4 +136,5 @@
   {% else %}
     <div class="card">Nenhum registro encontrado para os filtros.</div>
   {% endif %}
+  </div>
 {% endblock %}

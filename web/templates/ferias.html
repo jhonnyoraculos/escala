@@ -76,7 +76,7 @@
             <td><span class="status {{ item.status_class }}">{{ item.status }}</span></td>
             <td class="inline">
               <a class="button ghost" href="{{ url_for('ferias', edit_id=item.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('excluir_ferias', ferias_id=item.id) }}" data-confirm="Excluir férias?">
+              <form method="post" action="{{ url_for('excluir_ferias', ferias_id=item.id) }}" data-confirm="Excluir férias?" data-ajax-delete data-empty-colspan="6" data-empty-text="Nenhum período de férias cadastrado.">
                 <button class="button danger" type="submit">Excluir</button>
               </form>
             </td>
