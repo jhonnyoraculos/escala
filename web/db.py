@@ -14,6 +14,7 @@ LOGO_PATH = Path(os.environ.get("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "im
 FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf"))
 RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
 SEED_DATA_PATH = Path(os.environ.get("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json"))
+SEED_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_SEED", "0").strip().lower() in {"1", "true", "yes", "on"})
 
 
 def _activate_runtime_fallback() -> None:
@@ -47,6 +48,8 @@ def get_connection() -> sqlite3.Connection:
 
 
 def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
+    if not SEED_ENABLED:
+        return
     if not SEED_DATA_PATH.exists():
         return
 
