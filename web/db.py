@@ -53,15 +53,6 @@ def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
     if not SEED_DATA_PATH.exists():
         return
 
-    cur.execute("SELECT COUNT(*) FROM colaboradores;")
-    total_colaboradores = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM caminhoes;")
-    total_caminhoes = cur.fetchone()[0]
-    cur.execute("SELECT COUNT(*) FROM rotas_semanais;")
-    total_rotas_semanais = cur.fetchone()[0]
-    if total_colaboradores > 0 and total_caminhoes > 0 and total_rotas_semanais > 0:
-        return
-
     try:
         payload = json.loads(SEED_DATA_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -71,65 +62,82 @@ def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
     caminhoes = payload.get("caminhoes") or []
     rotas_semanais = payload.get("rotas_semanais") or []
 
-    if total_colaboradores == 0:
-        for item in colaboradores:
-            nome = (item.get("nome") or "").strip()
-            funcao = (item.get("funcao") or "").strip()
-            if not nome or not funcao:
-                continue
-            cur.execute(
-                """
-                INSERT OR IGNORE INTO colaboradores (id, nome, funcao, observacao, foto, ativo)
-                VALUES (?, ?, ?, ?, ?, ?);
-                """,
-                (
-                    item.get("id"),
-                    nome,
-                    funcao,
-                    (item.get("observacao") or "").strip(),
-                    (item.get("foto") or "").strip(),
-                    1 if item.get("ativo", 1) else 0,
-                ),
-            )
+    for item in colaboradores:
+        nome = (item.get("nome") or "").strip()
+        funcao = (item.get("funcao") or "").strip()
+        if not nome or not funcao:
+            continue
+        cur.execute(
+            """
+            SELECT 1
+            FROM colaboradores
+            WHERE UPPER(TRIM(nome)) = UPPER(?)
+              AND LOWER(TRIM(funcao)) = LOWER(?)
+            LIMIT 1;
+            """,
+            (nome, funcao),
+        )
+        if cur.fetchone():
+            continue
+        cur.execute(
+            """
+            INSERT INTO colaboradores (nome, funcao, observacao, foto, ativo)
+            VALUES (?, ?, ?, ?, ?);
+            """,
+            (
+                nome,
+                funcao,
+                (item.get("observacao") or "").strip(),
+                (item.get("foto") or "").strip(),
+                1 if item.get("ativo", 1) else 0,
+            ),
+        )
 
-    if total_caminhoes == 0:
-        for item in caminhoes:
-            placa = (item.get("placa") or "").strip().upper()
-            if not placa:
-                continue
-            cur.execute(
-                """
-                INSERT OR IGNORE INTO caminhoes (id, placa, modelo, observacao, ativo)
-                VALUES (?, ?, ?, ?, ?);
-                """,
-                (
-                    item.get("id"),
-                    placa,
-                    (item.get("modelo") or "").strip(),
-                    (item.get("observacao") or "").strip(),
-                    1 if item.get("ativo", 1) else 0,
-                ),
-            )
+    for item in caminhoes:
+        placa = (item.get("placa") or "").strip().upper()
+        if not placa:
+            continue
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO caminhoes (placa, modelo, observacao, ativo)
+            VALUES (?, ?, ?, ?);
+            """,
+            (
+                placa,
+                (item.get("modelo") or "").strip(),
+                (item.get("observacao") or "").strip(),
+                1 if item.get("ativo", 1) else 0,
+            ),
+        )
 
-    if total_rotas_semanais == 0:
-        for item in rotas_semanais:
-            dia_semana = (item.get("dia_semana") or "").strip().lower()
-            rota = (item.get("rota") or "").strip()
-            if not dia_semana or not rota:
-                continue
-            cur.execute(
-                """
-                INSERT OR IGNORE INTO rotas_semanais (id, dia_semana, rota, destino, observacao)
-                VALUES (?, ?, ?, ?, ?);
-                """,
-                (
-                    item.get("id"),
-                    dia_semana,
-                    rota,
-                    (item.get("destino") or "").strip(),
-                    (item.get("observacao") or "").strip(),
-                ),
-            )
+    for item in rotas_semanais:
+        dia_semana = (item.get("dia_semana") or "").strip().lower()
+        rota = (item.get("rota") or "").strip()
+        destino = (item.get("destino") or "").strip()
+        observacao = (item.get("observacao") or "").strip()
+        if not dia_semana or not rota:
+            continue
+        cur.execute(
+            """
+            SELECT 1
+            FROM rotas_semanais
+            WHERE LOWER(TRIM(dia_semana)) = LOWER(?)
+              AND TRIM(rota) = ?
+              AND COALESCE(TRIM(destino), '') = ?
+              AND COALESCE(TRIM(observacao), '') = ?
+            LIMIT 1;
+            """,
+            (dia_semana, rota, destino, observacao),
+        )
+        if cur.fetchone():
+            continue
+        cur.execute(
+            """
+            INSERT INTO rotas_semanais (dia_semana, rota, destino, observacao)
+            VALUES (?, ?, ?, ?);
+            """,
+            (dia_semana, rota, destino, observacao),
+        )
 
 
 def init_db() -> None:
