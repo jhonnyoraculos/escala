@@ -11,15 +11,35 @@ UPLOAD_DIR = Path(os.environ.get("JR_ESCALA_UPLOAD_DIR", BASE_DIR / "uploads"))
 REPORTS_DIR = Path(os.environ.get("JR_ESCALA_REPORTS_DIR", BASE_DIR / "reports"))
 LOGO_PATH = Path(os.environ.get("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "img" / "logo-jr.png"))
 FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf"))
+RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
+
+
+def _activate_runtime_fallback() -> None:
+    global DB_PATH, UPLOAD_DIR, REPORTS_DIR
+    RUNTIME_FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
+    DB_PATH = RUNTIME_FALLBACK_DIR / "jr_escala_web.db"
+    UPLOAD_DIR = RUNTIME_FALLBACK_DIR / "uploads"
+    REPORTS_DIR = RUNTIME_FALLBACK_DIR / "reports"
 
 
 def ensure_dirs() -> None:
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        _activate_runtime_fallback()
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn = sqlite3.connect(DB_PATH)
+    except sqlite3.OperationalError:
+        _activate_runtime_fallback()
+        conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
