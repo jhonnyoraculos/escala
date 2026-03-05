@@ -14,6 +14,11 @@ except Exception:  # pragma: no cover
     psycopg = None
     dict_row = None
 
+try:
+    from psycopg_pool import ConnectionPool
+except Exception:  # pragma: no cover
+    ConnectionPool = None
+
 BASE_DIR = Path(__file__).resolve().parent
 
 
@@ -48,6 +53,7 @@ FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fo
 RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
 SEED_DATA_PATH = Path(os.environ.get("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json"))
 SEED_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_SEED", "0").strip().lower() in {"1", "true", "yes", "on"})
+PG_POOL = None
 
 
 def _activate_runtime_fallback() -> None:
@@ -179,8 +185,10 @@ class PgCompatCursor:
 
 
 class PgCompatConnection:
-    def __init__(self, raw_conn):
+    def __init__(self, raw_conn, pool=None):
         self._conn = raw_conn
+        self._pool = pool
+        self._released = False
         self.row_factory = None
 
     def cursor(self):
@@ -201,7 +209,13 @@ class PgCompatConnection:
         self._conn.rollback()
 
     def close(self) -> None:
-        self._conn.close()
+        if self._released:
+            return
+        self._released = True
+        if self._pool is not None:
+            self._pool.putconn(self._conn)
+        else:
+            self._conn.close()
 
     def __enter__(self):
         return self
@@ -217,10 +231,48 @@ class PgCompatConnection:
         return False
 
 
+def _pool_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, min(maximum, value))
+
+
+def _get_pg_pool():
+    global PG_POOL
+    if not DB_IS_POSTGRES or ConnectionPool is None:
+        return None
+    if PG_POOL is None:
+        min_size = _pool_int("JR_ESCALA_PG_POOL_MIN", 1, 1, 20)
+        max_size = _pool_int("JR_ESCALA_PG_POOL_MAX", 8, min_size, 40)
+        timeout_raw = os.environ.get("JR_ESCALA_PG_POOL_TIMEOUT", "10")
+        try:
+            timeout = max(1.0, float(timeout_raw))
+        except ValueError:
+            timeout = 10.0
+        PG_POOL = ConnectionPool(
+            conninfo=DATABASE_URL,
+            min_size=min_size,
+            max_size=max_size,
+            timeout=timeout,
+            kwargs={"autocommit": False},
+            open=True,
+        )
+    return PG_POOL
+
+
 def get_connection():
     if DB_IS_POSTGRES:
         if psycopg is None:
             raise RuntimeError("psycopg não está instalado. Adicione 'psycopg[binary]' ao requirements.txt")
+        pool = _get_pg_pool()
+        if pool is not None:
+            raw = pool.getconn()
+            return PgCompatConnection(raw, pool=pool)
         raw = psycopg.connect(DATABASE_URL, autocommit=False)
         return PgCompatConnection(raw)
 
