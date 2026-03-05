@@ -1523,7 +1523,7 @@ def preencher_carregamentos_automaticos(data_iso: str, data_saida_iso: str | Non
                 revisado=False,
             )
             inseridos += 1
-        except sqlite3.Error:
+        except Exception:
             continue
     return inseridos
 
@@ -1562,7 +1562,7 @@ def sincronizar_rota_semana_com_carregamentos(
             data_saida=data_saida_iso,
             revisado=False,
         )
-    except sqlite3.Error:
+    except Exception:
         return False
     return True
 

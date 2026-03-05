@@ -2,10 +2,22 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path
+from typing import Any, Iterable
+
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except Exception:  # pragma: no cover
+    psycopg = None
+    dict_row = None
 
 BASE_DIR = Path(__file__).resolve().parent
+
+DATABASE_URL = (os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
+DB_IS_POSTGRES = DATABASE_URL.lower().startswith(("postgres://", "postgresql://"))
 
 DB_PATH = Path(os.environ.get("JR_ESCALA_DB_PATH", BASE_DIR / "jr_escala_web.db"))
 UPLOAD_DIR = Path(os.environ.get("JR_ESCALA_UPLOAD_DIR", BASE_DIR / "uploads"))
@@ -27,17 +39,170 @@ def _activate_runtime_fallback() -> None:
 
 def ensure_dirs() -> None:
     try:
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if not DB_IS_POSTGRES:
+            DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     except OSError:
         _activate_runtime_fallback()
-        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if not DB_IS_POSTGRES:
+            DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def get_connection() -> sqlite3.Connection:
+def _append_clause(sql: str, clause: str) -> str:
+    stripped = sql.rstrip()
+    if stripped.endswith(";"):
+        return f"{stripped[:-1]}{clause};"
+    return f"{stripped}{clause}"
+
+
+def _qmark_to_percent(sql: str) -> str:
+    out: list[str] = []
+    i = 0
+    in_single = False
+    in_double = False
+    length = len(sql)
+    while i < length:
+        ch = sql[i]
+        if ch == "'" and not in_double:
+            if in_single and i + 1 < length and sql[i + 1] == "'":
+                out.append("''")
+                i += 2
+                continue
+            in_single = not in_single
+            out.append(ch)
+            i += 1
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "?" and not in_single and not in_double:
+            out.append("%s")
+        else:
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _translate_query_for_pg(query: str) -> tuple[str, bool]:
+    sql = query
+    sql = re.sub(r"\s+COLLATE\s+NOCASE\b", "", sql, flags=re.IGNORECASE)
+
+    used_insert_or_ignore = False
+    if re.search(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", sql, flags=re.IGNORECASE):
+        sql = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT INTO", sql, flags=re.IGNORECASE)
+        used_insert_or_ignore = True
+
+    sql = re.sub(
+        r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT",
+        "BIGSERIAL PRIMARY KEY",
+        sql,
+        flags=re.IGNORECASE,
+    )
+
+    upper_sql = sql.upper()
+    is_insert = bool(re.match(r"\s*INSERT\b", upper_sql))
+
+    if used_insert_or_ignore and "ON CONFLICT" not in upper_sql:
+        sql = _append_clause(sql, " ON CONFLICT DO NOTHING")
+        upper_sql = sql.upper()
+
+    wants_lastrowid = False
+    if is_insert and "RETURNING" not in upper_sql:
+        sql = _append_clause(sql, " RETURNING id")
+        wants_lastrowid = True
+
+    sql = _qmark_to_percent(sql)
+    return sql, wants_lastrowid
+
+
+class PgCompatCursor:
+    def __init__(self, raw_cursor):
+        self._cur = raw_cursor
+        self.lastrowid: int | None = None
+
+    def execute(self, query: str, params: Iterable[Any] = ()):
+        sql, wants_lastrowid = _translate_query_for_pg(query)
+        values = tuple(params or ())
+        self._cur.execute(sql, values)
+        if wants_lastrowid:
+            row = self._cur.fetchone()
+            if isinstance(row, dict):
+                self.lastrowid = row.get("id")
+            elif row:
+                self.lastrowid = row[0]
+            else:
+                self.lastrowid = None
+        return self
+
+    def executemany(self, query: str, seq_of_params: Iterable[Iterable[Any]]):
+        for params in seq_of_params:
+            self.execute(query, params)
+        return self
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def close(self) -> None:
+        self._cur.close()
+
+    def __iter__(self):
+        return iter(self._cur)
+
+
+class PgCompatConnection:
+    def __init__(self, raw_conn):
+        self._conn = raw_conn
+        self.row_factory = None
+
+    def cursor(self):
+        kwargs = {}
+        if self.row_factory is not None and dict_row is not None:
+            kwargs["row_factory"] = dict_row
+        return PgCompatCursor(self._conn.cursor(**kwargs))
+
+    def execute(self, query: str, params: Iterable[Any] = ()):
+        cur = self.cursor()
+        cur.execute(query, params)
+        return cur
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type is None:
+                self.commit()
+            else:
+                self.rollback()
+        finally:
+            self.close()
+        return False
+
+
+def get_connection():
+    if DB_IS_POSTGRES:
+        if psycopg is None:
+            raise RuntimeError("psycopg não está instalado. Adicione 'psycopg[binary]' ao requirements.txt")
+        raw = psycopg.connect(DATABASE_URL, autocommit=False)
+        return PgCompatConnection(raw)
+
     try:
         conn = sqlite3.connect(DB_PATH)
     except sqlite3.OperationalError:
@@ -47,7 +212,7 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
-def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
+def _seed_core_data_if_empty(cur) -> None:
     if not SEED_ENABLED:
         return
     if not SEED_DATA_PATH.exists():
@@ -140,164 +305,178 @@ def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
         )
 
 
+def _create_schema(cur) -> None:
+    id_col = "BIGSERIAL PRIMARY KEY" if DB_IS_POSTGRES else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    int_col = "BIGINT" if DB_IS_POSTGRES else "INTEGER"
+    flag_col = "SMALLINT" if DB_IS_POSTGRES else "INTEGER"
+
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS colaboradores (
+            id {id_col},
+            nome TEXT NOT NULL,
+            funcao TEXT NOT NULL,
+            observacao TEXT DEFAULT '',
+            foto TEXT DEFAULT '',
+            ativo {flag_col} NOT NULL DEFAULT 1
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS folgas (
+            id {id_col},
+            data TEXT NOT NULL,
+            data_fim TEXT,
+            data_saida TEXT,
+            colaborador_id {int_col} NOT NULL,
+            observacao_padrao TEXT,
+            observacao_extra TEXT,
+            observacao_cor TEXT,
+            FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id),
+            UNIQUE(data, colaborador_id)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS ferias (
+            id {id_col},
+            colaborador_id {int_col} NOT NULL,
+            data_inicio TEXT NOT NULL,
+            data_fim TEXT NOT NULL,
+            observacao TEXT,
+            FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS carregamentos (
+            id {id_col},
+            data TEXT NOT NULL,
+            data_saida TEXT,
+            rota TEXT NOT NULL,
+            placa TEXT,
+            motorista_id {int_col},
+            ajudante_id {int_col},
+            observacao TEXT,
+            observacao_extra TEXT,
+            observacao_cor TEXT,
+            revisado {flag_col} NOT NULL DEFAULT 0,
+            FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
+            FOREIGN KEY(ajudante_id) REFERENCES colaboradores(id),
+            UNIQUE(data, rota, placa)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS oficinas (
+            id {id_col},
+            data TEXT NOT NULL,
+            motorista_id {int_col},
+            placa TEXT NOT NULL,
+            observacao TEXT,
+            observacao_extra TEXT,
+            data_saida TEXT,
+            observacao_cor TEXT,
+            FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
+            UNIQUE(data, placa)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS caminhoes (
+            id {id_col},
+            placa TEXT UNIQUE NOT NULL,
+            modelo TEXT,
+            observacao TEXT,
+            ativo {flag_col} NOT NULL DEFAULT 1
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS bloqueios (
+            id {id_col},
+            colaborador_id {int_col} NOT NULL,
+            data_inicio TEXT NOT NULL,
+            data_fim TEXT NOT NULL,
+            motivo TEXT,
+            carregamento_id {int_col},
+            FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS rotas_semanais (
+            id {id_col},
+            dia_semana TEXT NOT NULL,
+            rota TEXT NOT NULL,
+            destino TEXT,
+            observacao TEXT
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS rotas_suprimidas (
+            id {id_col},
+            data TEXT NOT NULL,
+            rota TEXT NOT NULL,
+            UNIQUE(data, rota)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS escala_cd (
+            id {id_col},
+            data TEXT NOT NULL,
+            motorista_id {int_col},
+            ajudante_id {int_col},
+            observacao TEXT,
+            FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
+            FOREIGN KEY(ajudante_id) REFERENCES colaboradores(id)
+        );
+        """
+    )
+    cur.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS ajustes_rotas (
+            id {id_col},
+            carregamento_id {int_col} NOT NULL,
+            data_ajuste TEXT NOT NULL,
+            duracao_anterior INTEGER NOT NULL,
+            duracao_nova INTEGER NOT NULL,
+            observacao_ajuste TEXT,
+            FOREIGN KEY(carregamento_id) REFERENCES carregamentos(id)
+        );
+        """
+    )
+
+
 def init_db() -> None:
     ensure_dirs()
     with get_connection() as conn:
         cur = conn.cursor()
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS colaboradores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                funcao TEXT NOT NULL,
-                observacao TEXT DEFAULT '',
-                foto TEXT DEFAULT '',
-                ativo INTEGER NOT NULL DEFAULT 1
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS folgas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                data_fim TEXT,
-                data_saida TEXT,
-                colaborador_id INTEGER NOT NULL,
-                observacao_padrao TEXT,
-                observacao_extra TEXT,
-                observacao_cor TEXT,
-                FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id),
-                UNIQUE(data, colaborador_id)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ferias (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                colaborador_id INTEGER NOT NULL,
-                data_inicio TEXT NOT NULL,
-                data_fim TEXT NOT NULL,
-                observacao TEXT,
-                FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS carregamentos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                data_saida TEXT,
-                rota TEXT NOT NULL,
-                placa TEXT,
-                motorista_id INTEGER,
-                ajudante_id INTEGER,
-                observacao TEXT,
-                observacao_extra TEXT,
-                observacao_cor TEXT,
-                revisado INTEGER NOT NULL DEFAULT 0,
-                FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
-                FOREIGN KEY(ajudante_id) REFERENCES colaboradores(id),
-                UNIQUE(data, rota, placa)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS oficinas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                motorista_id INTEGER,
-                placa TEXT NOT NULL,
-                observacao TEXT,
-                observacao_extra TEXT,
-                data_saida TEXT,
-                observacao_cor TEXT,
-                FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
-                UNIQUE(data, placa)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS caminhoes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                placa TEXT UNIQUE NOT NULL,
-                modelo TEXT,
-                observacao TEXT,
-                ativo INTEGER NOT NULL DEFAULT 1
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS bloqueios (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                colaborador_id INTEGER NOT NULL,
-                data_inicio TEXT NOT NULL,
-                data_fim TEXT NOT NULL,
-                motivo TEXT,
-                carregamento_id INTEGER,
-                FOREIGN KEY(colaborador_id) REFERENCES colaboradores(id)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS rotas_semanais (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                dia_semana TEXT NOT NULL,
-                rota TEXT NOT NULL,
-                destino TEXT,
-                observacao TEXT
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS rotas_suprimidas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                rota TEXT NOT NULL,
-                UNIQUE(data, rota)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS escala_cd (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL,
-                motorista_id INTEGER,
-                ajudante_id INTEGER,
-                observacao TEXT,
-                FOREIGN KEY(motorista_id) REFERENCES colaboradores(id),
-                FOREIGN KEY(ajudante_id) REFERENCES colaboradores(id)
-            );
-            """
-        )
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS ajustes_rotas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                carregamento_id INTEGER NOT NULL,
-                data_ajuste TEXT NOT NULL,
-                duracao_anterior INTEGER NOT NULL,
-                duracao_nova INTEGER NOT NULL,
-                observacao_ajuste TEXT,
-                FOREIGN KEY(carregamento_id) REFERENCES carregamentos(id)
-            );
-            """
-        )
-        cur.execute("PRAGMA table_info(carregamentos);")
-        colunas_carregamentos = {row[1] for row in cur.fetchall()}
-        if "revisado" not in colunas_carregamentos:
-            cur.execute("ALTER TABLE carregamentos ADD COLUMN revisado INTEGER NOT NULL DEFAULT 0;")
-        cur.execute("PRAGMA table_info(folgas);")
-        colunas_folgas = {row[1] for row in cur.fetchall()}
-        if "data_saida" not in colunas_folgas:
-            cur.execute("ALTER TABLE folgas ADD COLUMN data_saida TEXT;")
+        _create_schema(cur)
+
+        if DB_IS_POSTGRES:
+            cur.execute("ALTER TABLE carregamentos ADD COLUMN IF NOT EXISTS revisado SMALLINT NOT NULL DEFAULT 0;")
+            cur.execute("ALTER TABLE folgas ADD COLUMN IF NOT EXISTS data_saida TEXT;")
+        else:
+            cur.execute("PRAGMA table_info(carregamentos);")
+            colunas_carregamentos = {row[1] for row in cur.fetchall()}
+            if "revisado" not in colunas_carregamentos:
+                cur.execute("ALTER TABLE carregamentos ADD COLUMN revisado INTEGER NOT NULL DEFAULT 0;")
+            cur.execute("PRAGMA table_info(folgas);")
+            colunas_folgas = {row[1] for row in cur.fetchall()}
+            if "data_saida" not in colunas_folgas:
+                cur.execute("ALTER TABLE folgas ADD COLUMN data_saida TEXT;")
+
         _seed_core_data_if_empty(cur)
         conn.commit()
