@@ -708,6 +708,19 @@ textarea {
     align-items: flex-start;
   }
 
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 12px 6px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs a {
+    scroll-snap-align: start;
+  }
+
   .section-title {
     flex-direction: column;
     align-items: flex-start;
@@ -723,10 +736,13 @@ textarea {
   }
 
   .assistant-stack {
-    right: 12px;
-    bottom: 12px;
-    width: min(320px, calc(100vw - 16px));
-    max-width: calc(100vw - 16px);
+    position: static;
+    right: auto;
+    bottom: auto;
+    width: auto;
+    max-width: none;
+    padding: 0 16px 16px;
+    margin-top: 8px;
   }
 }
 
@@ -742,18 +758,6 @@ textarea {
   .top-meta {
     width: 100%;
     text-align: left;
-  }
-
-  .tabs {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 10px 12px 6px;
-    scroll-snap-type: x proximity;
-  }
-
-  .tabs a {
-    scroll-snap-align: start;
   }
 
   .section-title h2 {
@@ -790,10 +794,7 @@ textarea {
   }
 
   .assistant-stack {
-    width: min(300px, calc(100vw - 12px));
-    max-width: calc(100vw - 12px);
-    right: 6px;
-    bottom: 6px;
+    padding: 0 12px 12px;
   }
 
   .assistant-rotas__panel,
