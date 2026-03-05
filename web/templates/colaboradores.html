@@ -3,7 +3,7 @@
 {% block content %}
   <div class="section-title">
     <h2>Colaboradores</h2>
-    <span class="badge">{{ registros|length }} colaboradores</span>
+    <span class="badge" data-colaboradores-total="{{ registros|length }}">{{ registros|length }} colaboradores</span>
   </div>
 
   <div class="card">
@@ -56,7 +56,7 @@
       </thead>
       <tbody>
         {% for item in registros %}
-          <tr>
+          <tr data-colaborador-row="{{ item.id }}">
             <td>{{ item.nome }}</td>
             <td>{{ item.funcao }}</td>
             <td>{{ item.observacao or '-' }}</td>
@@ -66,7 +66,7 @@
               <form method="post" action="{{ url_for('desativar_colaborador', colaborador_id=item.id) }}" data-confirm="Desativar colaborador?">
                 <button class="button danger" type="submit">Desativar</button>
               </form>
-              <form method="post" action="{{ url_for('excluir_colaborador', colaborador_id=item.id) }}" data-confirm="Excluir colaborador e remover vínculos (folgas, férias e bloqueios)?">
+              <form method="post" action="{{ url_for('excluir_colaborador', colaborador_id=item.id) }}" data-confirm="Excluir colaborador e remover vínculos (folgas, férias e bloqueios)?" data-ajax-colaborador="excluir">
                 <button class="button outline" type="submit">Excluir</button>
               </form>
             </td>

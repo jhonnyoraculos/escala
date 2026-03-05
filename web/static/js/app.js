@@ -497,6 +497,101 @@ const initAjaxCarregamentos = () => {
   });
 };
 
+const initAjaxColaboradores = () => {
+  document.addEventListener("submit", async (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    if (!form.matches('form[data-ajax-colaborador="excluir"]')) {
+      return;
+    }
+
+    event.preventDefault();
+    const action = form.getAttribute("action");
+    if (!action) {
+      return;
+    }
+
+    const button = form.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+    }
+
+    const showFlash = (message, category = "success") => {
+      const flashArea = document.getElementById("flash-area");
+      if (!flashArea) {
+        return;
+      }
+      flashArea.innerHTML = "";
+      const flash = document.createElement("div");
+      flash.className = `flash ${category}`;
+      flash.textContent = message;
+      flashArea.appendChild(flash);
+    };
+
+    try {
+      const response = await fetch(action, {
+        method: "POST",
+        body: new FormData(form),
+        credentials: "same-origin",
+        headers: { "X-Requested-With": "fetch" },
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.ok) {
+        const message = (payload && payload.message) || "Não foi possível excluir o colaborador.";
+        showFlash(message, "error");
+        if (button) {
+          button.disabled = false;
+        }
+        return;
+      }
+
+      const row = form.closest("tr");
+      if (row) {
+        const tbody = row.parentElement;
+        row.remove();
+        if (tbody && !tbody.querySelector("tr")) {
+          const empty = document.createElement("tr");
+          const cell = document.createElement("td");
+          cell.colSpan = 5;
+          cell.textContent = "Nenhum colaborador cadastrado.";
+          empty.appendChild(cell);
+          tbody.appendChild(empty);
+        }
+      }
+
+      const badge = document.querySelector("[data-colaboradores-total]");
+      if (badge) {
+        let total = Number(payload.total);
+        if (!Number.isFinite(total)) {
+          const atual = Number(badge.dataset.colaboradoresTotal || "0");
+          total = Math.max(0, atual - 1);
+        }
+        badge.dataset.colaboradoresTotal = String(total);
+        badge.textContent = `${total} colaborador${total === 1 ? "" : "es"}`;
+      }
+
+      showFlash(payload.message || "Colaborador excluído.", "success");
+      if (rotasAssistantState.refresh) {
+        rotasAssistantState.refresh();
+      }
+      if (disponiveisAssistantState.refresh) {
+        disponiveisAssistantState.refresh();
+      }
+    } catch (err) {
+      showFlash("Erro de conexão ao excluir colaborador.", "error");
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  });
+};
+
 const initRedirectOnChange = () => {
   document.querySelectorAll("[data-redirect-param]").forEach((input) => {
     if (input.dataset.redirectReady) {
@@ -603,6 +698,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initConfirmDialogs();
   initAvatarSelects();
   initAjaxCarregamentos();
+  initAjaxColaboradores();
   initRedirectOnChange();
   initMotAjToggle();
   initRotasAssistant();

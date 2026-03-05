@@ -896,14 +896,20 @@ def desativar_colaborador(colaborador_id: int):
 
 @app.post("/colaboradores/<int:colaborador_id>/excluir")
 def excluir_colaborador(colaborador_id: int):
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
     try:
         foto_path = svc.excluir_colaborador(colaborador_id)
         if foto_path:
             foto_abs = UPLOAD_DIR / foto_path
             if foto_abs.exists():
                 foto_abs.unlink()
+        if is_fetch:
+            total = len(svc.listar_colaboradores(ativos_only=False))
+            return jsonify({"ok": True, "message": "Colaborador excluído.", "total": total})
         flash("Colaborador excluído.", "success")
     except Exception as exc:
+        if is_fetch:
+            return jsonify({"ok": False, "message": f"Erro ao excluir: {exc}"}), 400
         flash(f"Erro ao excluir: {exc}", "error")
     return redirect(url_for("colaboradores"))
 
