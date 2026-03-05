@@ -16,12 +16,33 @@ except Exception:  # pragma: no cover
 
 BASE_DIR = Path(__file__).resolve().parent
 
-DATABASE_URL = (os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
+
+def _extract_database_url(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    text = text.strip().strip('"').strip("'")
+    match = re.search(r"(postgres(?:ql)?://[^\s\"']+)", text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return text
+
+
+def _default_data_root() -> Path:
+    if os.environ.get("RENDER_SERVICE_ID") or os.environ.get("RENDER") == "true":
+        return Path("/var/data")
+    return BASE_DIR
+
+
+DATABASE_URL = _extract_database_url(os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "")
 DB_IS_POSTGRES = DATABASE_URL.lower().startswith(("postgres://", "postgresql://"))
 
-DB_PATH = Path(os.environ.get("JR_ESCALA_DB_PATH", BASE_DIR / "jr_escala_web.db"))
-UPLOAD_DIR = Path(os.environ.get("JR_ESCALA_UPLOAD_DIR", BASE_DIR / "uploads"))
-REPORTS_DIR = Path(os.environ.get("JR_ESCALA_REPORTS_DIR", BASE_DIR / "reports"))
+DATA_ROOT = _default_data_root()
+DEFAULT_DB_NAME = "jr_escala.db" if DATA_ROOT != BASE_DIR else "jr_escala_web.db"
+
+DB_PATH = Path(os.environ.get("JR_ESCALA_DB_PATH", DATA_ROOT / DEFAULT_DB_NAME))
+UPLOAD_DIR = Path(os.environ.get("JR_ESCALA_UPLOAD_DIR", DATA_ROOT / "uploads"))
+REPORTS_DIR = Path(os.environ.get("JR_ESCALA_REPORTS_DIR", DATA_ROOT / "reports"))
 LOGO_PATH = Path(os.environ.get("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "img" / "logo-jr.png"))
 FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf"))
 RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
