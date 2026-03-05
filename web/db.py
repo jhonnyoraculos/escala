@@ -54,7 +54,9 @@ def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
     total_colaboradores = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM caminhoes;")
     total_caminhoes = cur.fetchone()[0]
-    if total_colaboradores > 0 or total_caminhoes > 0:
+    cur.execute("SELECT COUNT(*) FROM rotas_semanais;")
+    total_rotas_semanais = cur.fetchone()[0]
+    if total_colaboradores > 0 and total_caminhoes > 0 and total_rotas_semanais > 0:
         return
 
     try:
@@ -64,44 +66,67 @@ def _seed_core_data_if_empty(cur: sqlite3.Cursor) -> None:
 
     colaboradores = payload.get("colaboradores") or []
     caminhoes = payload.get("caminhoes") or []
+    rotas_semanais = payload.get("rotas_semanais") or []
 
-    for item in colaboradores:
-        nome = (item.get("nome") or "").strip()
-        funcao = (item.get("funcao") or "").strip()
-        if not nome or not funcao:
-            continue
-        cur.execute(
-            """
-            INSERT OR IGNORE INTO colaboradores (id, nome, funcao, observacao, foto, ativo)
-            VALUES (?, ?, ?, ?, ?, ?);
-            """,
-            (
-                item.get("id"),
-                nome,
-                funcao,
-                (item.get("observacao") or "").strip(),
-                (item.get("foto") or "").strip(),
-                1 if item.get("ativo", 1) else 0,
-            ),
-        )
+    if total_colaboradores == 0:
+        for item in colaboradores:
+            nome = (item.get("nome") or "").strip()
+            funcao = (item.get("funcao") or "").strip()
+            if not nome or not funcao:
+                continue
+            cur.execute(
+                """
+                INSERT OR IGNORE INTO colaboradores (id, nome, funcao, observacao, foto, ativo)
+                VALUES (?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    item.get("id"),
+                    nome,
+                    funcao,
+                    (item.get("observacao") or "").strip(),
+                    (item.get("foto") or "").strip(),
+                    1 if item.get("ativo", 1) else 0,
+                ),
+            )
 
-    for item in caminhoes:
-        placa = (item.get("placa") or "").strip().upper()
-        if not placa:
-            continue
-        cur.execute(
-            """
-            INSERT OR IGNORE INTO caminhoes (id, placa, modelo, observacao, ativo)
-            VALUES (?, ?, ?, ?, ?);
-            """,
-            (
-                item.get("id"),
-                placa,
-                (item.get("modelo") or "").strip(),
-                (item.get("observacao") or "").strip(),
-                1 if item.get("ativo", 1) else 0,
-            ),
-        )
+    if total_caminhoes == 0:
+        for item in caminhoes:
+            placa = (item.get("placa") or "").strip().upper()
+            if not placa:
+                continue
+            cur.execute(
+                """
+                INSERT OR IGNORE INTO caminhoes (id, placa, modelo, observacao, ativo)
+                VALUES (?, ?, ?, ?, ?);
+                """,
+                (
+                    item.get("id"),
+                    placa,
+                    (item.get("modelo") or "").strip(),
+                    (item.get("observacao") or "").strip(),
+                    1 if item.get("ativo", 1) else 0,
+                ),
+            )
+
+    if total_rotas_semanais == 0:
+        for item in rotas_semanais:
+            dia_semana = (item.get("dia_semana") or "").strip().lower()
+            rota = (item.get("rota") or "").strip()
+            if not dia_semana or not rota:
+                continue
+            cur.execute(
+                """
+                INSERT OR IGNORE INTO rotas_semanais (id, dia_semana, rota, destino, observacao)
+                VALUES (?, ?, ?, ?, ?);
+                """,
+                (
+                    item.get("id"),
+                    dia_semana,
+                    rota,
+                    (item.get("destino") or "").strip(),
+                    (item.get("observacao") or "").strip(),
+                ),
+            )
 
 
 def init_db() -> None:

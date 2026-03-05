@@ -797,5 +797,441 @@
       "observacao": "",
       "ativo": 1
     }
+  ],
+  "rotas_semanais": [
+    {
+      "id": 1,
+      "dia_semana": "segunda",
+      "rota": "10",
+      "destino": "DIVINOPÓLIS 1",
+      "observacao": ""
+    },
+    {
+      "id": 2,
+      "dia_semana": "segunda",
+      "rota": "20",
+      "destino": "CARMO DO CAJURU 1",
+      "observacao": ""
+    },
+    {
+      "id": 6,
+      "dia_semana": "segunda",
+      "rota": "200",
+      "destino": "CAPITÓLIO  1",
+      "observacao": ""
+    },
+    {
+      "id": 7,
+      "dia_semana": "segunda",
+      "rota": "1000",
+      "destino": "CLAUDIO",
+      "observacao": ""
+    },
+    {
+      "id": 8,
+      "dia_semana": "segunda",
+      "rota": "40",
+      "destino": "ITAÚNA",
+      "observacao": ""
+    },
+    {
+      "id": 9,
+      "dia_semana": "segunda",
+      "rota": "41",
+      "destino": "PARÁ DE MINAS",
+      "observacao": ""
+    },
+    {
+      "id": 10,
+      "dia_semana": "segunda",
+      "rota": "70",
+      "destino": "VARGINHA",
+      "observacao": ""
+    },
+    {
+      "id": 11,
+      "dia_semana": "segunda",
+      "rota": "60",
+      "destino": "LAVRAS 1",
+      "observacao": ""
+    },
+    {
+      "id": 12,
+      "dia_semana": "segunda",
+      "rota": "400",
+      "destino": "JOÃO MONLEVADE",
+      "observacao": ""
+    },
+    {
+      "id": 13,
+      "dia_semana": "segunda",
+      "rota": "404",
+      "destino": "ITABIRA",
+      "observacao": ""
+    },
+    {
+      "id": 15,
+      "dia_semana": "segunda",
+      "rota": "21",
+      "destino": "CARMO DO CAJURU 2",
+      "observacao": ""
+    },
+    {
+      "id": 16,
+      "dia_semana": "terça",
+      "rota": "41",
+      "destino": "PARÁ DE MINAS",
+      "observacao": ""
+    },
+    {
+      "id": 17,
+      "dia_semana": "terça",
+      "rota": "401",
+      "destino": "PONTE NOVA",
+      "observacao": ""
+    },
+    {
+      "id": 18,
+      "dia_semana": "terça",
+      "rota": "402",
+      "destino": "OURO PRETO",
+      "observacao": ""
+    },
+    {
+      "id": 19,
+      "dia_semana": "terça",
+      "rota": "405",
+      "destino": "CARATINGA",
+      "observacao": ""
+    },
+    {
+      "id": 20,
+      "dia_semana": "terça",
+      "rota": "500",
+      "destino": "ALTO PARANAÍBA",
+      "observacao": ""
+    },
+    {
+      "id": 21,
+      "dia_semana": "terça",
+      "rota": "10",
+      "destino": "DIVINÓPOLIS",
+      "observacao": ""
+    },
+    {
+      "id": 22,
+      "dia_semana": "terça",
+      "rota": "20",
+      "destino": "CARMO DO CAJURU",
+      "observacao": ""
+    },
+    {
+      "id": 23,
+      "dia_semana": "terça",
+      "rota": "40",
+      "destino": "ITAUNA",
+      "observacao": ""
+    },
+    {
+      "id": 24,
+      "dia_semana": "terça",
+      "rota": "125",
+      "destino": "BRUMADINHO",
+      "observacao": ""
+    },
+    {
+      "id": 25,
+      "dia_semana": "terça",
+      "rota": "600",
+      "destino": "PEDRO LEOPOLDO",
+      "observacao": ""
+    },
+    {
+      "id": 26,
+      "dia_semana": "terça",
+      "rota": "45",
+      "destino": "PITANGUI",
+      "observacao": ""
+    },
+    {
+      "id": 27,
+      "dia_semana": "quarta",
+      "rota": "201",
+      "destino": "FORMIGA 2",
+      "observacao": ""
+    },
+    {
+      "id": 28,
+      "dia_semana": "quarta",
+      "rota": "41",
+      "destino": "PARÁ DE MINAS",
+      "observacao": ""
+    },
+    {
+      "id": 29,
+      "dia_semana": "quarta",
+      "rota": "60",
+      "destino": "LAVRAS 2",
+      "observacao": ""
+    },
+    {
+      "id": 30,
+      "dia_semana": "quarta",
+      "rota": "50",
+      "destino": "SÃO JOÃO DEL REI 1",
+      "observacao": ""
+    },
+    {
+      "id": 31,
+      "dia_semana": "quarta",
+      "rota": "900",
+      "destino": "BOM DESPACHO 1",
+      "observacao": ""
+    },
+    {
+      "id": 32,
+      "dia_semana": "quarta",
+      "rota": "10",
+      "destino": "DIVINÓPOLIS",
+      "observacao": ""
+    },
+    {
+      "id": 33,
+      "dia_semana": "quarta",
+      "rota": "20",
+      "destino": "CARMO DO CAJURU",
+      "observacao": ""
+    },
+    {
+      "id": 34,
+      "dia_semana": "quarta",
+      "rota": "40",
+      "destino": "ITAÚNA",
+      "observacao": ""
+    },
+    {
+      "id": 35,
+      "dia_semana": "quarta",
+      "rota": "1000",
+      "destino": "CLAUDIO",
+      "observacao": ""
+    },
+    {
+      "id": 36,
+      "dia_semana": "quinta",
+      "rota": "41",
+      "destino": "PARÁ DE MINAS",
+      "observacao": ""
+    },
+    {
+      "id": 37,
+      "dia_semana": "quinta",
+      "rota": "10",
+      "destino": "DIVINÓPOLIS",
+      "observacao": ""
+    },
+    {
+      "id": 38,
+      "dia_semana": "quinta",
+      "rota": "20",
+      "destino": "CARMO DO CAJURU",
+      "observacao": ""
+    },
+    {
+      "id": 39,
+      "dia_semana": "quinta",
+      "rota": "40",
+      "destino": "ITAÚNA",
+      "observacao": ""
+    },
+    {
+      "id": 40,
+      "dia_semana": "quinta",
+      "rota": "45",
+      "destino": "PITANGUI",
+      "observacao": ""
+    },
+    {
+      "id": 41,
+      "dia_semana": "quinta",
+      "rota": "125",
+      "destino": "BRUMADINHO",
+      "observacao": ""
+    },
+    {
+      "id": 42,
+      "dia_semana": "quinta",
+      "rota": "600",
+      "destino": "PEDRO LEOPOLDO",
+      "observacao": ""
+    },
+    {
+      "id": 43,
+      "dia_semana": "sexta",
+      "rota": "30",
+      "destino": "ITAGUARA",
+      "observacao": ""
+    },
+    {
+      "id": 44,
+      "dia_semana": "sexta",
+      "rota": "45",
+      "destino": "PITANGUI",
+      "observacao": ""
+    },
+    {
+      "id": 45,
+      "dia_semana": "sexta",
+      "rota": "41",
+      "destino": "PARÁ DE MINAS",
+      "observacao": ""
+    },
+    {
+      "id": 46,
+      "dia_semana": "sexta",
+      "rota": "125",
+      "destino": "BRUMADINHO",
+      "observacao": ""
+    },
+    {
+      "id": 47,
+      "dia_semana": "sexta",
+      "rota": "600",
+      "destino": "PEDRO LEOPOLDO",
+      "observacao": ""
+    },
+    {
+      "id": 48,
+      "dia_semana": "sexta",
+      "rota": "901",
+      "destino": "BOM DESPACHO 2",
+      "observacao": ""
+    },
+    {
+      "id": 49,
+      "dia_semana": "sexta",
+      "rota": "800",
+      "destino": "CURVELO",
+      "observacao": ""
+    },
+    {
+      "id": 50,
+      "dia_semana": "sexta",
+      "rota": "80",
+      "destino": "LAGOA DA PRATA / FORMIGA",
+      "observacao": ""
+    },
+    {
+      "id": 51,
+      "dia_semana": "sexta",
+      "rota": "50",
+      "destino": "SÃO JOÃO DEL REI 2",
+      "observacao": ""
+    },
+    {
+      "id": 52,
+      "dia_semana": "sexta",
+      "rota": "40",
+      "destino": "ITAUNA",
+      "observacao": ""
+    },
+    {
+      "id": 53,
+      "dia_semana": "sexta",
+      "rota": "10",
+      "destino": "DIVINÓPOLIS",
+      "observacao": ""
+    },
+    {
+      "id": 54,
+      "dia_semana": "sexta",
+      "rota": "20",
+      "destino": "CARMO DO CAJURU",
+      "observacao": ""
+    },
+    {
+      "id": 55,
+      "dia_semana": "sexta",
+      "rota": "801",
+      "destino": "POMPÉU",
+      "observacao": ""
+    },
+    {
+      "id": 56,
+      "dia_semana": "sexta",
+      "rota": "402",
+      "destino": "OURO PRETO",
+      "observacao": ""
+    },
+    {
+      "id": 57,
+      "dia_semana": "segunda",
+      "rota": "80",
+      "destino": "LOGOA DA PRATA",
+      "observacao": ""
+    },
+    {
+      "id": 58,
+      "dia_semana": "terça",
+      "rota": "80",
+      "destino": "LAGOA DA PRATA / FORMIGA",
+      "observacao": ""
+    },
+    {
+      "id": 59,
+      "dia_semana": "quarta",
+      "rota": "80",
+      "destino": "LAGOA DA PRATA / FORMIGA",
+      "observacao": ""
+    },
+    {
+      "id": 60,
+      "dia_semana": "quinta",
+      "rota": "80",
+      "destino": "LAGOA DA PRATA / FORMIGA",
+      "observacao": ""
+    },
+    {
+      "id": 61,
+      "dia_semana": "segunda",
+      "rota": "11",
+      "destino": "DIVINÓPOLIS 2",
+      "observacao": ""
+    },
+    {
+      "id": 62,
+      "dia_semana": "segunda",
+      "rota": "12",
+      "destino": "DIVINÓPOLIS / C. AJURU",
+      "observacao": "FERRAGENS"
+    },
+    {
+      "id": 63,
+      "dia_semana": "segunda",
+      "rota": "100",
+      "destino": "SANTA LÚZIA",
+      "observacao": "REGIÃO BH"
+    },
+    {
+      "id": 64,
+      "dia_semana": "sexta",
+      "rota": "X",
+      "destino": "COLETA DURATEX",
+      "observacao": ""
+    },
+    {
+      "id": 65,
+      "dia_semana": "sexta",
+      "rota": "XX",
+      "destino": "COLETA CD BARUERI SP",
+      "observacao": ""
+    },
+    {
+      "id": 66,
+      "dia_semana": "segunda",
+      "rota": "70",
+      "destino": "BOA ESPERANÇA",
+      "observacao": ""
+    }
   ]
 }
