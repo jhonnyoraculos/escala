@@ -53,6 +53,7 @@ FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fo
 RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
 SEED_DATA_PATH = Path(os.environ.get("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json"))
 SEED_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_SEED", "0").strip().lower() in {"1", "true", "yes", "on"})
+PG_POOL_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_PG_POOL", "0").strip().lower() in {"1", "true", "yes", "on"})
 PG_POOL = None
 
 
@@ -244,7 +245,7 @@ def _pool_int(name: str, default: int, minimum: int, maximum: int) -> int:
 
 def _get_pg_pool():
     global PG_POOL
-    if not DB_IS_POSTGRES or ConnectionPool is None:
+    if not DB_IS_POSTGRES or ConnectionPool is None or not PG_POOL_ENABLED:
         return None
     if PG_POOL is None:
         min_size = _pool_int("JR_ESCALA_PG_POOL_MIN", 1, 1, 20)
@@ -271,8 +272,11 @@ def get_connection():
             raise RuntimeError("psycopg não está instalado. Adicione 'psycopg[binary]' ao requirements.txt")
         pool = _get_pg_pool()
         if pool is not None:
-            raw = pool.getconn()
-            return PgCompatConnection(raw, pool=pool)
+            try:
+                raw = pool.getconn()
+                return PgCompatConnection(raw, pool=pool)
+            except Exception:
+                pass
         raw = psycopg.connect(DATABASE_URL, autocommit=False)
         return PgCompatConnection(raw)
 

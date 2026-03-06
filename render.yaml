@@ -13,6 +13,8 @@ services:
         value: /var/data/uploads
       - key: JR_ESCALA_REPORTS_DIR
         value: /var/data/reports
+      - key: JR_ESCALA_ENABLE_PG_POOL
+        value: "0"
     disk:
       name: jr-escala-data
       mountPath: /var/data
