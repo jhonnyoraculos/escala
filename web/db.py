@@ -289,6 +289,22 @@ def get_connection():
     return conn
 
 
+def ping_database() -> dict[str, Any]:
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1;")
+        row = cur.fetchone()
+        valor = None
+        if isinstance(row, dict):
+            valor = next(iter(row.values()), None)
+        elif row:
+            valor = row[0]
+        return {
+            "db_is_postgres": DB_IS_POSTGRES,
+            "value": valor,
+        }
+
+
 def _seed_core_data_if_empty(cur) -> None:
     if not SEED_ENABLED:
         return

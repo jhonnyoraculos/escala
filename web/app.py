@@ -6,7 +6,7 @@ import time
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
 
-from .db import UPLOAD_DIR, init_db
+from .db import UPLOAD_DIR, init_db, ping_database
 from . import services as svc
 from .reports import (
     desenhar_relatorio_carregamentos,
@@ -99,6 +99,22 @@ def inject_globals():
 @app.route("/")
 def index():
     return redirect(url_for("carregamentos"))
+
+
+@app.get("/__diag/db")
+def diag_db():
+    try:
+        payload = ping_database()
+        payload["ok"] = True
+        return jsonify(payload)
+    except Exception as exc:
+        return jsonify(
+            {
+                "ok": False,
+                "type": exc.__class__.__name__,
+                "message": str(exc),
+            }
+        ), 500
 
 
 @app.get("/assistente-rotas")
