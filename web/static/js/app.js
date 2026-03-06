@@ -5,12 +5,24 @@ const avatarSelectState = {
 
 const rotasAssistantState = {
   bound: false,
+  loaded: false,
   refresh: null,
+  scheduled: false,
 };
 
 const disponiveisAssistantState = {
   bound: false,
+  loaded: false,
   refresh: null,
+  scheduled: false,
+};
+
+const scheduleBackgroundRefresh = (callback) => {
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(() => callback(), { timeout: 1200 });
+    return;
+  }
+  window.setTimeout(callback, 500);
 };
 
 const initConfirmDialogs = () => {
@@ -291,6 +303,7 @@ const initRotasAssistant = () => {
           list.appendChild(li);
         }
       });
+      rotasAssistantState.loaded = true;
     } catch (err) {
       if (status) {
         status.textContent = "Não foi possível carregar.";
@@ -304,7 +317,12 @@ const initRotasAssistant = () => {
     const toggle = widget.querySelector(".assistant-rotas__toggle");
     const refreshButton = widget.querySelector(".assistant-rotas__refresh");
     if (toggle) {
-      toggle.addEventListener("click", () => widget.classList.toggle("is-open"));
+      toggle.addEventListener("click", () => {
+        const aberto = widget.classList.toggle("is-open");
+        if (aberto && !rotasAssistantState.loaded) {
+          refresh();
+        }
+      });
     }
     if (refreshButton) {
       refreshButton.addEventListener("click", refresh);
@@ -312,7 +330,10 @@ const initRotasAssistant = () => {
     window.addEventListener("popstate", refresh);
   }
 
-  refresh();
+  if (!rotasAssistantState.scheduled) {
+    rotasAssistantState.scheduled = true;
+    scheduleBackgroundRefresh(refresh);
+  }
 };
 
 const initDisponiveisAssistant = () => {
@@ -377,6 +398,7 @@ const initDisponiveisAssistant = () => {
           listAjudantes.appendChild(li);
         }
       });
+      disponiveisAssistantState.loaded = true;
     } catch (err) {
       if (status) {
         status.textContent = "Não foi possível carregar.";
@@ -390,7 +412,12 @@ const initDisponiveisAssistant = () => {
     const toggle = widget.querySelector(".assistant-disponiveis__toggle");
     const refreshButton = widget.querySelector(".assistant-disponiveis__refresh");
     if (toggle) {
-      toggle.addEventListener("click", () => widget.classList.toggle("is-open"));
+      toggle.addEventListener("click", () => {
+        const aberto = widget.classList.toggle("is-open");
+        if (aberto && !disponiveisAssistantState.loaded) {
+          refresh();
+        }
+      });
     }
     if (refreshButton) {
       refreshButton.addEventListener("click", refresh);
@@ -398,7 +425,10 @@ const initDisponiveisAssistant = () => {
     window.addEventListener("popstate", refresh);
   }
 
-  refresh();
+  if (!disponiveisAssistantState.scheduled) {
+    disponiveisAssistantState.scheduled = true;
+    scheduleBackgroundRefresh(refresh);
+  }
 };
 
 const initAjaxCarregamentos = () => {

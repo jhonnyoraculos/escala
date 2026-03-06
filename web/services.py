@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from datetime import date, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
@@ -7,8 +8,18 @@ from typing import Any, Iterable
 import os
 import re
 import sqlite3
+import threading
+import time
 
 from PIL import Image, ImageOps
+
+try:
+    from flask import g, has_request_context
+except Exception:  # pragma: no cover
+    g = None
+
+    def has_request_context() -> bool:
+        return False
 
 from .db import UPLOAD_DIR, get_connection
 
@@ -101,6 +112,85 @@ MESES_EXTENSO = [
     "novembro",
     "dezembro",
 ]
+
+_MISSING = object()
+_CACHE_LOCK = threading.Lock()
+_CACHE_TTL_SECONDS = max(0.0, float(os.environ.get("JR_ESCALA_CACHE_TTL", "20").strip() or "20"))
+_MEMORY_CACHE: dict[tuple[Any, ...], tuple[float, Any]] = {}
+
+
+def _freeze_cache_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return tuple(sorted((str(key), _freeze_cache_value(val)) for key, val in value.items()))
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_cache_value(item) for item in value)
+    if isinstance(value, set):
+        return tuple(sorted(_freeze_cache_value(item) for item in value))
+    return value
+
+
+def _get_request_cache() -> dict[tuple[Any, ...], Any] | None:
+    if not has_request_context() or g is None:
+        return None
+    cache = getattr(g, "_svc_cache", None)
+    if cache is None:
+        cache = {}
+        g._svc_cache = cache
+    return cache
+
+
+def _cache_get(key: tuple[Any, ...], use_memory: bool) -> Any:
+    request_cache = _get_request_cache()
+    if request_cache is not None and key in request_cache:
+        return copy.deepcopy(request_cache[key])
+    if not use_memory or _CACHE_TTL_SECONDS <= 0:
+        return _MISSING
+    now = time.monotonic()
+    with _CACHE_LOCK:
+        cached = _MEMORY_CACHE.get(key)
+        if cached is None:
+            return _MISSING
+        expires_at, value = cached
+        if expires_at <= now:
+            _MEMORY_CACHE.pop(key, None)
+            return _MISSING
+    if request_cache is not None:
+        request_cache[key] = value
+    return copy.deepcopy(value)
+
+
+def _cache_set(key: tuple[Any, ...], value: Any, use_memory: bool) -> Any:
+    stored = copy.deepcopy(value)
+    request_cache = _get_request_cache()
+    if request_cache is not None:
+        request_cache[key] = stored
+    if use_memory and _CACHE_TTL_SECONDS > 0:
+        with _CACHE_LOCK:
+            _MEMORY_CACHE[key] = (time.monotonic() + _CACHE_TTL_SECONDS, stored)
+    return copy.deepcopy(stored)
+
+
+def _cache_invalidate(*prefixes: str) -> None:
+    if not prefixes:
+        return
+    request_cache = _get_request_cache()
+    if request_cache is not None:
+        for key in list(request_cache):
+            if key and key[0] in prefixes:
+                request_cache.pop(key, None)
+    with _CACHE_LOCK:
+        for key in list(_MEMORY_CACHE):
+            if key and key[0] in prefixes:
+                _MEMORY_CACHE.pop(key, None)
+
+
+def _cached_call(prefix: str, *parts: Any, use_memory: bool = False, loader):
+    key = (prefix,) + tuple(_freeze_cache_value(part) for part in parts)
+    cached = _cache_get(key, use_memory=use_memory)
+    if cached is not _MISSING:
+        return cached
+    value = loader()
+    return _cache_set(key, value, use_memory=use_memory)
 
 
 def combinar_observacoes(observacao_padrao: str | None, observacao_extra: str | None) -> str:
@@ -265,158 +355,164 @@ def obter_dia_semana_por_data(data_iso: str) -> str:
 
 
 def verificar_disponibilidade(data_iso: str, ignorar: dict[str, int] | None = None) -> dict[str, set[Any]]:
-    resultado: dict[str, set[Any]] = {
-        "motoristas": set(),
-        "ajudantes": set(),
-        "caminhoes": set(),
-    }
     data_iso = (data_iso or "").strip()
     alvo = parse_date(data_iso)
-    if not alvo:
-        return resultado
-
     ignorar = ignorar or {}
+    if not alvo:
+        return {
+            "motoristas": set(),
+            "ajudantes": set(),
+            "caminhoes": set(),
+        }
 
-    with get_connection() as conn:
-        cur = conn.cursor()
+    def _load() -> dict[str, set[Any]]:
+        resultado: dict[str, set[Any]] = {
+            "motoristas": set(),
+            "ajudantes": set(),
+            "caminhoes": set(),
+        }
+        with get_connection() as conn:
+            cur = conn.cursor()
 
-        ajustes_atuais: dict[int, int] = {}
-        for car_id, duracao_nova in _safe_fetch(
-            cur,
-            """
-            SELECT a.carregamento_id, a.duracao_nova
-            FROM ajustes_rotas a
-            INNER JOIN (
-                SELECT carregamento_id, MAX(id) AS max_id
-                FROM ajustes_rotas
-                GROUP BY carregamento_id
-            ) ult
-            ON ult.carregamento_id = a.carregamento_id
-            AND ult.max_id = a.id
-            """,
-        ):
-            ajustes_atuais[car_id] = duracao_nova
+            ajustes_atuais: dict[int, int] = {}
+            for car_id, duracao_nova in _safe_fetch(
+                cur,
+                """
+                SELECT a.carregamento_id, a.duracao_nova
+                FROM ajustes_rotas a
+                INNER JOIN (
+                    SELECT carregamento_id, MAX(id) AS max_id
+                    FROM ajustes_rotas
+                    GROUP BY carregamento_id
+                ) ult
+                ON ult.carregamento_id = a.carregamento_id
+                AND ult.max_id = a.id
+                """,
+            ):
+                ajustes_atuais[car_id] = duracao_nova
 
-        for ferias_id, col_id, inicio, fim in _safe_fetch(
-            cur,
-            "SELECT id, colaborador_id, data_inicio, data_fim FROM ferias",
-        ):
-            if not col_id or ignorar.get("ferias_id") == ferias_id:
-                continue
-            d_inicio = parse_date(inicio)
-            d_fim = parse_date(fim)
-            if d_inicio and d_fim and d_inicio <= alvo <= d_fim:
-                resultado["motoristas"].add(col_id)
-                resultado["ajudantes"].add(col_id)
-
-        for folga_id, col_id in _safe_fetch(
-            cur,
-            "SELECT id, colaborador_id FROM folgas WHERE data = ?",
-            (data_iso,),
-        ):
-            if not col_id or ignorar.get("folga_id") == folga_id:
-                continue
-            resultado["motoristas"].add(col_id)
-            resultado["ajudantes"].add(col_id)
-
-        for ofi_id, mot_id, placa in _safe_fetch(
-            cur,
-            "SELECT id, motorista_id, placa FROM oficinas WHERE data = ?",
-            (data_iso,),
-        ):
-            if ignorar.get("oficina_id") == ofi_id:
-                continue
-            if mot_id:
-                resultado["motoristas"].add(mot_id)
-                resultado["ajudantes"].add(mot_id)
-            if placa:
-                resultado["caminhoes"].add(placa.upper())
-
-        for escala_id, mot_id, aju_id in _safe_fetch(
-            cur,
-            "SELECT id, motorista_id, ajudante_id FROM escala_cd WHERE data = ?",
-            (data_iso,),
-        ):
-            if ignorar.get("escala_cd_id") == escala_id:
-                continue
-            if mot_id:
-                resultado["motoristas"].add(mot_id)
-                resultado["ajudantes"].add(mot_id)
-            if aju_id:
-                resultado["ajudantes"].add(aju_id)
-                resultado["motoristas"].add(aju_id)
-
-        for _, col_id, inicio, fim, car_id in _safe_fetch(
-            cur,
-            """
-            SELECT id, colaborador_id, data_inicio, data_fim, carregamento_id
-            FROM bloqueios
-            """,
-        ):
-            if not col_id:
-                continue
-            if car_id:
-                if ignorar.get("carregamento_id") == car_id:
+            for ferias_id, col_id, inicio, fim in _safe_fetch(
+                cur,
+                "SELECT id, colaborador_id, data_inicio, data_fim FROM ferias",
+            ):
+                if not col_id or ignorar.get("ferias_id") == ferias_id:
                     continue
-                continue
-            d_inicio = parse_date(inicio)
-            d_fim = parse_date(fim)
-            if d_inicio and d_fim and d_inicio <= alvo < d_fim:
+                d_inicio = parse_date(inicio)
+                d_fim = parse_date(fim)
+                if d_inicio and d_fim and d_inicio <= alvo <= d_fim:
+                    resultado["motoristas"].add(col_id)
+                    resultado["ajudantes"].add(col_id)
+
+            for folga_id, col_id in _safe_fetch(
+                cur,
+                "SELECT id, colaborador_id FROM folgas WHERE data = ?",
+                (data_iso,),
+            ):
+                if not col_id or ignorar.get("folga_id") == folga_id:
+                    continue
                 resultado["motoristas"].add(col_id)
                 resultado["ajudantes"].add(col_id)
 
-        for (
-            car_id,
-            data_registro,
-            data_saida,
-            mot_id,
-            aju_id,
-            placa,
-            observacao,
-        ) in _safe_fetch(
-            cur,
-            """
-            SELECT id, data, data_saida, motorista_id, ajudante_id, placa, observacao
-            FROM carregamentos
-            """,
-        ):
-            if ignorar.get("carregamento_id") == car_id:
-                continue
-            data_registro_dt = parse_date(data_registro)
-            data_saida_dt = parse_date(data_saida)
-            if not data_registro_dt and not data_saida_dt:
-                continue
-            if not data_registro_dt:
-                data_registro_dt = data_saida_dt
-            if not data_saida_dt and data_registro_dt:
-                dias_padrao = 3 if data_registro_dt.weekday() == 4 else 1
-                data_saida_dt = data_registro_dt + timedelta(days=dias_padrao)
-            if data_saida_dt and data_registro_dt and data_saida_dt < data_registro_dt:
-                data_saida_dt = data_registro_dt
-            dias = ajustes_atuais.get(
-                car_id, OBSERVACAO_DURACAO.get((observacao or "").strip(), 0)
-            )
-            if dias < 0:
-                continue
-            duracao_dias = max(dias, 0)
-            bloquear_registro = data_registro_dt == alvo if data_registro_dt else False
-            bloquear_viagem = False
-            if duracao_dias > 0:
-                inicio_viagem = data_saida_dt or data_registro_dt
-                if inicio_viagem:
-                    fim_viagem = inicio_viagem + timedelta(days=duracao_dias)
-                    bloquear_viagem = inicio_viagem <= alvo < fim_viagem
-            if bloquear_registro or bloquear_viagem:
+            for ofi_id, mot_id, placa in _safe_fetch(
+                cur,
+                "SELECT id, motorista_id, placa FROM oficinas WHERE data = ?",
+                (data_iso,),
+            ):
+                if ignorar.get("oficina_id") == ofi_id:
+                    continue
+                if mot_id:
+                    resultado["motoristas"].add(mot_id)
+                    resultado["ajudantes"].add(mot_id)
+                if placa:
+                    resultado["caminhoes"].add(placa.upper())
+
+            for escala_id, mot_id, aju_id in _safe_fetch(
+                cur,
+                "SELECT id, motorista_id, ajudante_id FROM escala_cd WHERE data = ?",
+                (data_iso,),
+            ):
+                if ignorar.get("escala_cd_id") == escala_id:
+                    continue
                 if mot_id:
                     resultado["motoristas"].add(mot_id)
                     resultado["ajudantes"].add(mot_id)
                 if aju_id:
                     resultado["ajudantes"].add(aju_id)
                     resultado["motoristas"].add(aju_id)
-                if placa:
-                    resultado["caminhoes"].add(placa.upper())
 
-    return resultado
+            for _, col_id, inicio, fim, car_id in _safe_fetch(
+                cur,
+                """
+                SELECT id, colaborador_id, data_inicio, data_fim, carregamento_id
+                FROM bloqueios
+                """,
+            ):
+                if not col_id:
+                    continue
+                if car_id:
+                    if ignorar.get("carregamento_id") == car_id:
+                        continue
+                    continue
+                d_inicio = parse_date(inicio)
+                d_fim = parse_date(fim)
+                if d_inicio and d_fim and d_inicio <= alvo < d_fim:
+                    resultado["motoristas"].add(col_id)
+                    resultado["ajudantes"].add(col_id)
+
+            for (
+                car_id,
+                data_registro,
+                data_saida,
+                mot_id,
+                aju_id,
+                placa,
+                observacao,
+            ) in _safe_fetch(
+                cur,
+                """
+                SELECT id, data, data_saida, motorista_id, ajudante_id, placa, observacao
+                FROM carregamentos
+                """,
+            ):
+                if ignorar.get("carregamento_id") == car_id:
+                    continue
+                data_registro_dt = parse_date(data_registro)
+                data_saida_dt = parse_date(data_saida)
+                if not data_registro_dt and not data_saida_dt:
+                    continue
+                if not data_registro_dt:
+                    data_registro_dt = data_saida_dt
+                if not data_saida_dt and data_registro_dt:
+                    dias_padrao = 3 if data_registro_dt.weekday() == 4 else 1
+                    data_saida_dt = data_registro_dt + timedelta(days=dias_padrao)
+                if data_saida_dt and data_registro_dt and data_saida_dt < data_registro_dt:
+                    data_saida_dt = data_registro_dt
+                dias = ajustes_atuais.get(
+                    car_id, OBSERVACAO_DURACAO.get((observacao or "").strip(), 0)
+                )
+                if dias < 0:
+                    continue
+                duracao_dias = max(dias, 0)
+                bloquear_registro = data_registro_dt == alvo if data_registro_dt else False
+                bloquear_viagem = False
+                if duracao_dias > 0:
+                    inicio_viagem = data_saida_dt or data_registro_dt
+                    if inicio_viagem:
+                        fim_viagem = inicio_viagem + timedelta(days=duracao_dias)
+                        bloquear_viagem = inicio_viagem <= alvo < fim_viagem
+                if bloquear_registro or bloquear_viagem:
+                    if mot_id:
+                        resultado["motoristas"].add(mot_id)
+                        resultado["ajudantes"].add(mot_id)
+                    if aju_id:
+                        resultado["ajudantes"].add(aju_id)
+                        resultado["motoristas"].add(aju_id)
+                    if placa:
+                        resultado["caminhoes"].add(placa.upper())
+
+        return resultado
+
+    return _cached_call("verificar_disponibilidade", data_iso, ignorar, loader=_load)
 
 
 # Colaboradores
@@ -430,39 +526,52 @@ def add_colaborador(nome: str, funcao: str, observacao: str = "", foto: str | No
             (nome.strip(), funcao.strip(), observacao.strip(), foto or ""),
         )
         conn.commit()
-        return cur.lastrowid
+        novo_id = cur.lastrowid
+    _cache_invalidate("listar_colaboradores", "obter_colaborador_por_id")
+    return novo_id
 
 
 def listar_colaboradores(ativos_only: bool = False) -> list[dict]:
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        if ativos_only:
-            cur.execute(
-                "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores WHERE ativo = 1 ORDER BY nome;"
-            )
-        else:
-            cur.execute(
-                "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores ORDER BY ativo DESC, nome;"
-            )
-        rows = [dict(row) for row in cur.fetchall()]
-    for row in rows:
-        row["foto"] = row.get("foto") or None
-    return rows
+    def _load() -> list[dict]:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            if ativos_only:
+                cur.execute(
+                    "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores WHERE ativo = 1 ORDER BY nome;"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores ORDER BY ativo DESC, nome;"
+                )
+            rows = [dict(row) for row in cur.fetchall()]
+        for row in rows:
+            row["foto"] = row.get("foto") or None
+        return rows
+
+    return _cached_call("listar_colaboradores", ativos_only, use_memory=True, loader=_load)
 
 
 def obter_colaborador_por_id(colaborador_id: int | None) -> dict | None:
     if not colaborador_id:
         return None
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores WHERE id = ?;",
-            (colaborador_id,),
-        )
-        row = cur.fetchone()
-        return dict(row) if row else None
+
+    def _load() -> dict | None:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, nome, funcao, observacao, foto, ativo FROM colaboradores WHERE id = ?;",
+                (colaborador_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            dados = dict(row)
+            dados["foto"] = dados.get("foto") or None
+            return dados
+
+    return _cached_call("obter_colaborador_por_id", colaborador_id, use_memory=True, loader=_load)
 
 
 def atualizar_colaborador(
@@ -484,6 +593,7 @@ def atualizar_colaborador(
             (nome.strip(), funcao.strip(), observacao.strip(), foto or "", 1 if ativo else 0, colaborador_id),
         )
         conn.commit()
+    _cache_invalidate("listar_colaboradores", "obter_colaborador_por_id")
 
 
 def desativar_colaborador(colaborador_id: int) -> None:
@@ -491,6 +601,7 @@ def desativar_colaborador(colaborador_id: int) -> None:
         cur = conn.cursor()
         cur.execute("UPDATE colaboradores SET ativo = 0 WHERE id = ?;", (colaborador_id,))
         conn.commit()
+    _cache_invalidate("listar_colaboradores", "obter_colaborador_por_id")
 
 
 def excluir_colaborador(colaborador_id: int) -> str | None:
@@ -510,7 +621,47 @@ def excluir_colaborador(colaborador_id: int) -> str | None:
         cur.execute("UPDATE oficinas SET motorista_id = NULL WHERE motorista_id = ?;", (colaborador_id,))
         cur.execute("DELETE FROM colaboradores WHERE id = ?;", (colaborador_id,))
         conn.commit()
-        return foto or None
+    _cache_invalidate("listar_colaboradores", "obter_colaborador_por_id")
+    return foto or None
+
+
+def listar_colaboradores_por_funcoes(
+    funcoes: Iterable[str],
+    data_iso: str | None = None,
+    ignorar: dict[str, int] | None = None,
+) -> dict[str, list[dict]]:
+    funcoes_normalizadas = []
+    funcoes_map: dict[str, str] = {}
+    for funcao in funcoes:
+        funcao_limpa = (funcao or "").strip()
+        if not funcao_limpa:
+            continue
+        chave = funcao_limpa.lower()
+        if chave in funcoes_map:
+            continue
+        funcoes_map[chave] = funcao_limpa
+        funcoes_normalizadas.append(chave)
+
+    grupos = {funcoes_map[chave]: [] for chave in funcoes_normalizadas}
+    if not funcoes_normalizadas:
+        return grupos
+
+    colaboradores = listar_colaboradores(ativos_only=True)
+    indisponibilidade = verificar_disponibilidade(data_iso, ignorar) if data_iso else None
+    for colaborador in colaboradores:
+        chave = (colaborador.get("funcao") or "").strip().lower()
+        nome_grupo = funcoes_map.get(chave)
+        if not nome_grupo:
+            continue
+        if indisponibilidade is not None:
+            disponibilidade_chave = "motoristas" if chave.startswith("motor") else "ajudantes"
+            if colaborador.get("id") in indisponibilidade.get(disponibilidade_chave, set()):
+                continue
+        grupos[nome_grupo].append(colaborador)
+
+    for lista in grupos.values():
+        lista.sort(key=lambda item: (item.get("nome") or "").upper())
+    return grupos
 
 
 def listar_colaboradores_por_funcao(
@@ -518,42 +669,25 @@ def listar_colaboradores_por_funcao(
     data_iso: str | None = None,
     ignorar: dict[str, int] | None = None,
 ) -> list[dict]:
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, nome, funcao, observacao, foto
-            FROM colaboradores
-            WHERE ativo = 1 AND lower(funcao) = ?
-            ORDER BY nome;
-            """,
-            (funcao.lower(),),
-        )
-        colaboradores = []
-        for row in cur.fetchall():
-            dados = dict(row)
-            dados["foto"] = dados.get("foto") or None
-            colaboradores.append(dados)
-
-    if not data_iso:
-        return colaboradores
-
-    chave = "motoristas" if funcao.lower().startswith("motor") else "ajudantes"
-    indisponiveis = verificar_disponibilidade(data_iso, ignorar).get(chave, set())
-    return [col for col in colaboradores if col["id"] not in indisponiveis]
+    return listar_colaboradores_por_funcoes([funcao], data_iso, ignorar).get(funcao.strip(), [])
 
 
-def formatar_ajudante_nome(nome: str, colaborador_id: int | None) -> str:
+def formatar_ajudante_nome(
+    nome: str,
+    colaborador_id: int | None,
+    funcao: str | None = None,
+) -> str:
     if not colaborador_id:
         return nome
     if not nome or nome == DISPLAY_VAZIO:
         return nome or DISPLAY_VAZIO
-    dados = obter_colaborador_por_id(colaborador_id)
-    if not dados:
-        return nome
-    funcao = (dados.get("funcao") or "").lower()
-    if funcao.startswith("motor") and MOTORISTA_AJUDANTE_TAG not in nome:
+    funcao_normalizada = (funcao or "").strip().lower()
+    if not funcao_normalizada:
+        dados = obter_colaborador_por_id(colaborador_id)
+        if not dados:
+            return nome
+        funcao_normalizada = (dados.get("funcao") or "").lower()
+    if funcao_normalizada.startswith("motor") and MOTORISTA_AJUDANTE_TAG not in nome:
         return f"{nome} {MOTORISTA_AJUDANTE_TAG}"
     return nome
 
@@ -651,22 +785,27 @@ def add_caminhao(placa: str, modelo: str, observacao: str) -> int:
             (placa_db, (modelo or "").strip(), (observacao or "").strip()),
         )
         conn.commit()
-        return cur.lastrowid
+        novo_id = cur.lastrowid
+    _cache_invalidate("listar_caminhoes")
+    return novo_id
 
 
 def listar_caminhoes(ativos_only: bool = True) -> list[dict]:
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        if ativos_only:
-            cur.execute(
-                "SELECT id, placa, modelo, observacao, ativo FROM caminhoes WHERE ativo = 1 ORDER BY placa;"
-            )
-        else:
-            cur.execute(
-                "SELECT id, placa, modelo, observacao, ativo FROM caminhoes ORDER BY ativo DESC, placa;"
-            )
-        return [dict(row) for row in cur.fetchall()]
+    def _load() -> list[dict]:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            if ativos_only:
+                cur.execute(
+                    "SELECT id, placa, modelo, observacao, ativo FROM caminhoes WHERE ativo = 1 ORDER BY placa;"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, placa, modelo, observacao, ativo FROM caminhoes ORDER BY ativo DESC, placa;"
+                )
+            return [dict(row) for row in cur.fetchall()]
+
+    return _cached_call("listar_caminhoes", ativos_only, use_memory=True, loader=_load)
 
 
 def editar_caminhao(caminhao_id: int, placa: str, modelo: str, observacao: str, ativo: bool = True) -> None:
@@ -682,6 +821,7 @@ def editar_caminhao(caminhao_id: int, placa: str, modelo: str, observacao: str, 
             (placa_db, (modelo or "").strip(), (observacao or "").strip(), 1 if ativo else 0, caminhao_id),
         )
         conn.commit()
+    _cache_invalidate("listar_caminhoes")
 
 
 def remover_caminhao(caminhao_id: int) -> None:
@@ -689,6 +829,7 @@ def remover_caminhao(caminhao_id: int) -> None:
         cur = conn.cursor()
         cur.execute("DELETE FROM caminhoes WHERE id = ?;", (caminhao_id,))
         conn.commit()
+    _cache_invalidate("listar_caminhoes")
 
 
 def listar_caminhoes_ativos() -> list[dict]:
@@ -734,34 +875,39 @@ def salvar_folga(
             ),
         )
         conn.commit()
-        return cur.lastrowid
+        novo_id = cur.lastrowid
+    _cache_invalidate("listar_folgas", "verificar_disponibilidade")
+    return novo_id
 
 
 def listar_folgas(data_iso: str) -> list[dict]:
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT
-                f.id AS folga_id,
-                c.id AS colaborador_id,
-                c.nome,
-                c.funcao,
-                f.data,
-                f.data_fim,
-                f.data_saida,
-                f.observacao_padrao,
-                f.observacao_extra,
-                f.observacao_cor
-            FROM folgas f
-            INNER JOIN colaboradores c ON c.id = f.colaborador_id
-            WHERE f.data = ?
-            ORDER BY c.nome;
-            """,
-            (data_iso,),
-        )
-        return [dict(row) for row in cur.fetchall()]
+    def _load() -> list[dict]:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT
+                    f.id AS folga_id,
+                    c.id AS colaborador_id,
+                    c.nome,
+                    c.funcao,
+                    f.data,
+                    f.data_fim,
+                    f.data_saida,
+                    f.observacao_padrao,
+                    f.observacao_extra,
+                    f.observacao_cor
+                FROM folgas f
+                INNER JOIN colaboradores c ON c.id = f.colaborador_id
+                WHERE f.data = ?
+                ORDER BY c.nome;
+                """,
+                (data_iso,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    return _cached_call("listar_folgas", data_iso, loader=_load)
 
 
 def listar_folgas_por_data_saida(data_iso: str) -> list[dict]:
@@ -828,6 +974,7 @@ def editar_folga(
             ),
         )
         conn.commit()
+    _cache_invalidate("listar_folgas", "verificar_disponibilidade")
 
 
 def remover_folga(folga_id: int) -> None:
@@ -835,6 +982,7 @@ def remover_folga(folga_id: int) -> None:
         cur = conn.cursor()
         cur.execute("DELETE FROM folgas WHERE id = ?;", (folga_id,))
         conn.commit()
+    _cache_invalidate("listar_folgas", "verificar_disponibilidade")
 
 # Férias
 
@@ -859,7 +1007,9 @@ def adicionar_ferias(colaborador_id: int, data_inicio: str, data_fim: str, obser
             (colaborador_id, data_inicio, data_fim, observacao_db),
         )
         conn.commit()
-        return cur.lastrowid
+        novo_id = cur.lastrowid
+    _cache_invalidate("listar_ferias", "verificar_disponibilidade")
+    return novo_id
 
 
 def atualizar_ferias(registro_id: int, colaborador_id: int, data_inicio: str, data_fim: str, observacao: str | None) -> None:
@@ -876,6 +1026,7 @@ def atualizar_ferias(registro_id: int, colaborador_id: int, data_inicio: str, da
             (colaborador_id, data_inicio, data_fim, observacao_db, registro_id),
         )
         conn.commit()
+    _cache_invalidate("listar_ferias", "verificar_disponibilidade")
 
 
 def remover_ferias(registro_id: int) -> None:
@@ -883,37 +1034,41 @@ def remover_ferias(registro_id: int) -> None:
         cur = conn.cursor()
         cur.execute("DELETE FROM ferias WHERE id = ?;", (registro_id,))
         conn.commit()
+    _cache_invalidate("listar_ferias", "verificar_disponibilidade")
 
 
 def listar_ferias() -> list[dict]:
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT f.id,
-                   f.colaborador_id,
-                   c.nome,
-                   c.foto,
-                   f.data_inicio,
-                   f.data_fim,
-                   f.observacao
-            FROM ferias f
-            INNER JOIN colaboradores c ON c.id = f.colaborador_id
-            ORDER BY f.data_inicio DESC, c.nome;
-            """
-        )
-        registros = [dict(row) for row in cur.fetchall()]
-    hoje = date.today()
-    for item in registros:
-        fim = parse_date(item.get("data_fim"))
-        if fim and fim < hoje:
-            item["status"] = "Finalizada"
-            item["status_class"] = "ok"
-        else:
-            item["status"] = "Em andamento"
-            item["status_class"] = "warn"
-    return registros
+    def _load() -> list[dict]:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT f.id,
+                       f.colaborador_id,
+                       c.nome,
+                       c.foto,
+                       f.data_inicio,
+                       f.data_fim,
+                       f.observacao
+                FROM ferias f
+                INNER JOIN colaboradores c ON c.id = f.colaborador_id
+                ORDER BY f.data_inicio DESC, c.nome;
+                """
+            )
+            registros = [dict(row) for row in cur.fetchall()]
+        hoje = date.today()
+        for item in registros:
+            fim = parse_date(item.get("data_fim"))
+            if fim and fim < hoje:
+                item["status"] = "Finalizada"
+                item["status_class"] = "ok"
+            else:
+                item["status"] = "Em andamento"
+                item["status_class"] = "warn"
+        return registros
+
+    return _cached_call("listar_ferias", loader=_load)
 
 # Bloqueios
 
@@ -1351,19 +1506,23 @@ def excluir_oficina(oficina_id: int) -> None:
 
 def listar_rotas_semanais(dia_semana: str) -> list[dict]:
     dia = normalizar_dia_semana(dia_semana)
-    with get_connection() as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, dia_semana, rota, destino, observacao
-            FROM rotas_semanais
-            WHERE dia_semana = ?
-            ORDER BY rota COLLATE NOCASE ASC;
-            """,
-            (dia,),
-        )
-        return [dict(row) for row in cur.fetchall()]
+
+    def _load() -> list[dict]:
+        with get_connection() as conn:
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT id, dia_semana, rota, destino, observacao
+                FROM rotas_semanais
+                WHERE dia_semana = ?
+                ORDER BY rota COLLATE NOCASE ASC;
+                """,
+                (dia,),
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    return _cached_call("listar_rotas_semanais", dia, use_memory=True, loader=_load)
 
 
 def adicionar_rota_semana(dia_semana: str, rota: str, destino: str, observacao: str) -> int:
@@ -1378,7 +1537,9 @@ def adicionar_rota_semana(dia_semana: str, rota: str, destino: str, observacao: 
             (dia, rota.strip(), destino.strip(), observacao.strip()),
         )
         conn.commit()
-        return cur.lastrowid
+        novo_id = cur.lastrowid
+    _cache_invalidate("listar_rotas_semanais")
+    return novo_id
 
 
 def editar_rota_semana(rota_id: int, dia_semana: str, rota: str, destino: str, observacao: str) -> None:
@@ -1394,6 +1555,7 @@ def editar_rota_semana(rota_id: int, dia_semana: str, rota: str, destino: str, o
             (dia, rota.strip(), destino.strip(), observacao.strip(), rota_id),
         )
         conn.commit()
+    _cache_invalidate("listar_rotas_semanais")
 
 
 def remover_rota_semana(rota_id: int) -> None:
@@ -1401,6 +1563,7 @@ def remover_rota_semana(rota_id: int) -> None:
         cur = conn.cursor()
         cur.execute("DELETE FROM rotas_semanais WHERE id = ?;", (rota_id,))
         conn.commit()
+    _cache_invalidate("listar_rotas_semanais")
 
 
 def listar_rotas_para_data(data_iso: str) -> list[dict]:
@@ -1758,7 +1921,8 @@ def consultar_log_carregamentos(filtros: dict) -> list[dict]:
                car.motorista_id,
                car.ajudante_id,
                mot.nome AS motorista_nome,
-               aj.nome AS ajudante_nome
+               aj.nome AS ajudante_nome,
+               aj.funcao AS ajudante_funcao
         FROM carregamentos car
         LEFT JOIN colaboradores mot ON mot.id = car.motorista_id
         LEFT JOIN colaboradores aj ON aj.id = car.ajudante_id
@@ -1776,7 +1940,7 @@ def consultar_log_carregamentos(filtros: dict) -> list[dict]:
         query.append("AND car.motorista_id = ?")
         params.append(filtros["motorista_id"])
     if filtros.get("placa"):
-        query.append("AND UPPER(car.placa) = ?")
+        query.append("AND car.placa = ?")
         params.append(filtros["placa"].upper())
     query.append("ORDER BY car.data DESC, car.id DESC")
 
@@ -1832,6 +1996,7 @@ def consultar_log_carregamentos(filtros: dict) -> list[dict]:
         ajudante_nome = formatar_ajudante_nome(
             registro.get("ajudante_nome") or DISPLAY_VAZIO,
             registro.get("ajudante_id"),
+            registro.get("ajudante_funcao"),
         )
         placa_valor = (registro.get("placa") or "").upper() or DISPLAY_VAZIO
         motorista_valor = registro.get("motorista_nome") or DISPLAY_VAZIO

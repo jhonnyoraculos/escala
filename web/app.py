@@ -48,6 +48,31 @@ def _int(value: str | None) -> int | None:
         return None
 
 
+def _carregar_equipes(
+    data_iso: str | None = None,
+    ignorar: dict[str, int] | None = None,
+    incluir_motoristas_como_ajudante: bool = False,
+) -> tuple[list[dict], list[dict]]:
+    grupos = svc.listar_colaboradores_por_funcoes(["Motorista", "Ajudante"], data_iso, ignorar)
+    motoristas = grupos.get("Motorista", [])
+    ajudantes = grupos.get("Ajudante", [])
+    if not incluir_motoristas_como_ajudante:
+        return motoristas, ajudantes
+
+    ajudantes_ids = {item.get("id") for item in ajudantes}
+    ajudantes = ajudantes + [
+        {
+            "id": item["id"],
+            "nome": f"{item['nome']} {svc.MOTORISTA_AJUDANTE_TAG}",
+            "foto": item.get("foto"),
+            "mot_aj": True,
+        }
+        for item in motoristas
+        if item.get("id") not in ajudantes_ids
+    ]
+    return motoristas, ajudantes
+
+
 @app.context_processor
 def inject_globals():
     static_files = [
@@ -107,8 +132,7 @@ def assistente_rotas():
 @app.get("/assistente-disponiveis")
 def assistente_disponiveis():
     data_iso = (request.args.get("data") or session.get("carreg_data_iso") or date.today().isoformat()).strip()
-    motoristas = svc.listar_colaboradores_por_funcao("Motorista", data_iso)
-    ajudantes = svc.listar_colaboradores_por_funcao("Ajudante", data_iso)
+    motoristas, ajudantes = _carregar_equipes(data_iso=data_iso)
     nomes_motoristas = sorted([m.get("nome") for m in motoristas if m.get("nome")])
     nomes_ajudantes = sorted([a.get("nome") for a in ajudantes if a.get("nome")])
     total = len(nomes_motoristas) + len(nomes_ajudantes)
@@ -257,19 +281,7 @@ def carregamentos():
         registros = svc.listar_carregamentos(data_iso)
     disponibilidade = svc.verificar_disponibilidade(data_iso, {"carregamento_id": edit_id} if edit_id else None)
 
-    motoristas = svc.listar_colaboradores_por_funcao("Motorista")
-    ajudantes = svc.listar_colaboradores_por_funcao("Ajudante")
-    ajudantes_ids = {a.get("id") for a in ajudantes}
-    ajudantes = ajudantes + [
-        {
-            "id": m["id"],
-            "nome": f"{m['nome']} {svc.MOTORISTA_AJUDANTE_TAG}",
-            "foto": m.get("foto"),
-            "mot_aj": True,
-        }
-        for m in motoristas
-        if m.get("id") not in ajudantes_ids
-    ]
+    motoristas, ajudantes = _carregar_equipes(incluir_motoristas_como_ajudante=True)
 
     caminhoes = svc.listar_caminhoes_ativos()
     carregamentos_dia = [
@@ -632,8 +644,7 @@ def escala_cd():
     registros = svc.listar_escala_cd(data_iso)
     data_saida = (request.args.get("data_saida") or "").strip() or svc.calcular_data_saida_padrao(data_iso)
 
-    motoristas = svc.listar_colaboradores_por_funcao("Motorista")
-    ajudantes = svc.listar_colaboradores_por_funcao("Ajudante")
+    motoristas, ajudantes = _carregar_equipes()
     disponibilidade = svc.verificar_disponibilidade(data_iso, {"escala_cd_id": edit_id} if edit_id else None)
 
     return render_template(
@@ -953,19 +964,7 @@ def log_view():
         "placa": (request.args.get("placa") or "").strip() or None,
     }
     registros = svc.consultar_log_carregamentos(filtros)
-    motoristas = svc.listar_colaboradores_por_funcao("Motorista")
-    ajudantes = svc.listar_colaboradores_por_funcao("Ajudante")
-    ajudantes_ids = {a.get("id") for a in ajudantes}
-    ajudantes = ajudantes + [
-        {
-            "id": m["id"],
-            "nome": f"{m['nome']} {svc.MOTORISTA_AJUDANTE_TAG}",
-            "foto": m.get("foto"),
-            "mot_aj": True,
-        }
-        for m in motoristas
-        if m.get("id") not in ajudantes_ids
-    ]
+    motoristas, ajudantes = _carregar_equipes(incluir_motoristas_como_ajudante=True)
     placas = [item.get("placa") for item in svc.listar_caminhoes(ativos_only=False)]
 
     return render_template(

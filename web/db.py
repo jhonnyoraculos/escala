@@ -530,6 +530,28 @@ def _create_schema(cur) -> None:
         );
         """
     )
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_colaboradores_ativo_nome ON colaboradores (ativo, nome);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_colaboradores_funcao_nome ON colaboradores (funcao, nome);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_folgas_data ON folgas (data);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_folgas_colaborador ON folgas (colaborador_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ferias_periodo ON ferias (data_inicio, data_fim);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ferias_colaborador ON ferias (colaborador_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carregamentos_data ON carregamentos (data);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carregamentos_data_saida ON carregamentos (data_saida);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carregamentos_motorista ON carregamentos (motorista_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carregamentos_ajudante ON carregamentos (ajudante_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_carregamentos_placa ON carregamentos (placa);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_oficinas_data ON oficinas (data);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_oficinas_data_saida ON oficinas (data_saida);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_oficinas_motorista ON oficinas (motorista_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_oficinas_placa ON oficinas (placa);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_caminhoes_ativo_placa ON caminhoes (ativo, placa);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_bloqueios_periodo ON bloqueios (data_inicio, data_fim);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_bloqueios_colaborador_periodo ON bloqueios (colaborador_id, data_inicio, data_fim);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_bloqueios_carregamento ON bloqueios (carregamento_id);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rotas_semanais_dia_rota ON rotas_semanais (dia_semana, rota);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_escala_cd_data ON escala_cd (data);")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_ajustes_rotas_carregamento_id ON ajustes_rotas (carregamento_id, id);")
 
 
 def init_db() -> None:
