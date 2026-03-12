@@ -49,6 +49,7 @@ def _default_data_root() -> Path:
     return BASE_DIR
 
 
+RUNNING_ON_RENDER = bool(os.environ.get("RENDER_SERVICE_ID") or os.environ.get("RENDER") == "true")
 FORCE_SQLITE = _env_flag("JR_ESCALA_FORCE_SQLITE")
 DATABASE_URL_RAW = _extract_database_url(os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "")
 DATABASE_URL = "" if FORCE_SQLITE else DATABASE_URL_RAW
@@ -66,6 +67,7 @@ RUNTIME_FALLBACK_DIR = _env_path("JR_ESCALA_RUNTIME_DIR", Path("/tmp/jr_escala")
 SEED_DATA_PATH = _env_path("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json")
 SEED_ENABLED = _env_flag("JR_ESCALA_ENABLE_SEED")
 PG_POOL_ENABLED = _env_flag("JR_ESCALA_ENABLE_PG_POOL")
+ALLOW_RUNTIME_FALLBACK = _env_flag("JR_ESCALA_ALLOW_RUNTIME_FALLBACK", "0" if RUNNING_ON_RENDER else "1")
 BUNDLED_DB_PATH = _env_path("JR_ESCALA_BUNDLED_DB_PATH", BASE_DIR / "jr_escala_web.db")
 BUNDLED_UPLOAD_DIR = _env_path("JR_ESCALA_BUNDLED_UPLOAD_DIR", BASE_DIR / "uploads")
 BUNDLED_REPORTS_DIR = _env_path("JR_ESCALA_BUNDLED_REPORTS_DIR", BASE_DIR / "reports")
@@ -73,14 +75,26 @@ LEGACY_BUNDLED_DB_PATH = BASE_DIR.parent / "jr_escala.db"
 LEGACY_BUNDLED_UPLOAD_DIR = BASE_DIR.parent / "fotos_colaboradores"
 LEGACY_BUNDLED_REPORTS_DIR = BASE_DIR.parent / "relatorios"
 PG_POOL = None
+USING_RUNTIME_FALLBACK = False
+
+
+def _persistent_storage_error(exc: Exception | None = None) -> RuntimeError:
+    message = (
+        "Armazenamento persistente indisponivel. Monte um disk em /var/data no Render "
+        "ou defina JR_ESCALA_ALLOW_RUNTIME_FALLBACK=1 para usar armazenamento temporario."
+    )
+    if exc is None:
+        return RuntimeError(message)
+    return RuntimeError(f"{message} Erro original: {exc}")
 
 
 def _activate_runtime_fallback() -> None:
-    global DB_PATH, UPLOAD_DIR, REPORTS_DIR
+    global DB_PATH, UPLOAD_DIR, REPORTS_DIR, USING_RUNTIME_FALLBACK
     RUNTIME_FALLBACK_DIR.mkdir(parents=True, exist_ok=True)
     DB_PATH = RUNTIME_FALLBACK_DIR / "jr_escala_web.db"
     UPLOAD_DIR = RUNTIME_FALLBACK_DIR / "uploads"
     REPORTS_DIR = RUNTIME_FALLBACK_DIR / "reports"
+    USING_RUNTIME_FALLBACK = True
 
 
 def ensure_dirs() -> None:
@@ -89,7 +103,9 @@ def ensure_dirs() -> None:
             DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    except OSError:
+    except OSError as exc:
+        if not ALLOW_RUNTIME_FALLBACK:
+            raise _persistent_storage_error(exc) from exc
         _activate_runtime_fallback()
         if not DB_IS_POSTGRES:
             DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -397,7 +413,9 @@ def get_connection():
 
     try:
         conn = sqlite3.connect(DB_PATH)
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as exc:
+        if not ALLOW_RUNTIME_FALLBACK:
+            raise _persistent_storage_error(exc) from exc
         _activate_runtime_fallback()
         conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -419,6 +437,8 @@ def ping_database() -> dict[str, Any]:
             "db_path": None if DB_IS_POSTGRES else str(DB_PATH),
             "force_sqlite": FORCE_SQLITE,
             "database_url_present": bool(DATABASE_URL_RAW),
+            "allow_runtime_fallback": ALLOW_RUNTIME_FALLBACK,
+            "using_runtime_fallback": USING_RUNTIME_FALLBACK,
             "value": valor,
         }
 
