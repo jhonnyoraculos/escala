@@ -7,6 +7,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.11
+      - key: JR_ESCALA_FORCE_SQLITE
+        value: "1"
       - key: JR_ESCALA_DB_PATH
         value: /var/data/jr_escala.db
       - key: JR_ESCALA_UPLOAD_DIR

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Any, Iterable
@@ -22,6 +23,15 @@ except Exception:  # pragma: no cover
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def _env_flag(name: str, default: str = "0") -> bool:
+    return (os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"})
+
+
+def _env_path(name: str, default: Path) -> Path:
+    raw = (os.environ.get(name) or "").strip()
+    return Path(raw) if raw else default
+
+
 def _extract_database_url(raw: str) -> str:
     text = (raw or "").strip()
     if not text:
@@ -39,21 +49,29 @@ def _default_data_root() -> Path:
     return BASE_DIR
 
 
-DATABASE_URL = _extract_database_url(os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "")
+FORCE_SQLITE = _env_flag("JR_ESCALA_FORCE_SQLITE")
+DATABASE_URL_RAW = _extract_database_url(os.environ.get("JR_ESCALA_DATABASE_URL") or os.environ.get("DATABASE_URL") or "")
+DATABASE_URL = "" if FORCE_SQLITE else DATABASE_URL_RAW
 DB_IS_POSTGRES = DATABASE_URL.lower().startswith(("postgres://", "postgresql://"))
 
 DATA_ROOT = _default_data_root()
 DEFAULT_DB_NAME = "jr_escala.db" if DATA_ROOT != BASE_DIR else "jr_escala_web.db"
 
-DB_PATH = Path(os.environ.get("JR_ESCALA_DB_PATH", DATA_ROOT / DEFAULT_DB_NAME))
-UPLOAD_DIR = Path(os.environ.get("JR_ESCALA_UPLOAD_DIR", DATA_ROOT / "uploads"))
-REPORTS_DIR = Path(os.environ.get("JR_ESCALA_REPORTS_DIR", DATA_ROOT / "reports"))
-LOGO_PATH = Path(os.environ.get("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "img" / "logo-jr.png"))
-FONT_PATH = Path(os.environ.get("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf"))
-RUNTIME_FALLBACK_DIR = Path(os.environ.get("JR_ESCALA_RUNTIME_DIR", "/tmp/jr_escala"))
-SEED_DATA_PATH = Path(os.environ.get("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json"))
-SEED_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_SEED", "0").strip().lower() in {"1", "true", "yes", "on"})
-PG_POOL_ENABLED = (os.environ.get("JR_ESCALA_ENABLE_PG_POOL", "0").strip().lower() in {"1", "true", "yes", "on"})
+DB_PATH = _env_path("JR_ESCALA_DB_PATH", DATA_ROOT / DEFAULT_DB_NAME)
+UPLOAD_DIR = _env_path("JR_ESCALA_UPLOAD_DIR", DATA_ROOT / "uploads")
+REPORTS_DIR = _env_path("JR_ESCALA_REPORTS_DIR", DATA_ROOT / "reports")
+LOGO_PATH = _env_path("JR_ESCALA_LOGO_PATH", BASE_DIR / "static" / "img" / "logo-jr.png")
+FONT_PATH = _env_path("JR_ESCALA_FONT_PATH", BASE_DIR / "static" / "fonts" / "Sora.ttf")
+RUNTIME_FALLBACK_DIR = _env_path("JR_ESCALA_RUNTIME_DIR", Path("/tmp/jr_escala"))
+SEED_DATA_PATH = _env_path("JR_ESCALA_SEED_PATH", BASE_DIR / "seed_data.json")
+SEED_ENABLED = _env_flag("JR_ESCALA_ENABLE_SEED")
+PG_POOL_ENABLED = _env_flag("JR_ESCALA_ENABLE_PG_POOL")
+BUNDLED_DB_PATH = _env_path("JR_ESCALA_BUNDLED_DB_PATH", BASE_DIR / "jr_escala_web.db")
+BUNDLED_UPLOAD_DIR = _env_path("JR_ESCALA_BUNDLED_UPLOAD_DIR", BASE_DIR / "uploads")
+BUNDLED_REPORTS_DIR = _env_path("JR_ESCALA_BUNDLED_REPORTS_DIR", BASE_DIR / "reports")
+LEGACY_BUNDLED_DB_PATH = BASE_DIR.parent / "jr_escala.db"
+LEGACY_BUNDLED_UPLOAD_DIR = BASE_DIR.parent / "fotos_colaboradores"
+LEGACY_BUNDLED_REPORTS_DIR = BASE_DIR.parent / "relatorios"
 PG_POOL = None
 
 
@@ -77,6 +95,103 @@ def ensure_dirs() -> None:
             DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _path_key(path: Path) -> str:
+    try:
+        return str(path.resolve())
+    except OSError:
+        return str(path)
+
+
+def _first_existing_path(candidates: Iterable[Path], *, exclude: Path | None = None) -> Path | None:
+    excluded = _path_key(exclude) if exclude is not None else None
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if excluded and _path_key(candidate) == excluded:
+            continue
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _directory_has_files(path: Path) -> bool:
+    try:
+        next(path.iterdir())
+        return True
+    except (OSError, StopIteration):
+        return False
+
+
+def _sqlite_db_has_data(path: Path) -> bool:
+    if not path.exists():
+        return False
+    try:
+        if path.stat().st_size <= 0:
+            return False
+    except OSError:
+        return False
+
+    try:
+        with sqlite3.connect(path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';")
+            tabelas = {row[0] for row in cur.fetchall()}
+            if not tabelas:
+                return False
+            for nome in ("colaboradores", "caminhoes", "rotas_semanais", "carregamentos"):
+                if nome not in tabelas:
+                    continue
+                cur.execute(f"SELECT COUNT(*) FROM {nome};")
+                row = cur.fetchone()
+                if row and row[0]:
+                    return True
+    except sqlite3.Error:
+        return False
+    return False
+
+
+def _copy_directory_contents(source: Path, target: Path) -> None:
+    if not source.exists():
+        return
+    target.mkdir(parents=True, exist_ok=True)
+    for item in source.iterdir():
+        destino = target / item.name
+        if destino.exists():
+            continue
+        if item.is_dir():
+            shutil.copytree(item, destino)
+        else:
+            shutil.copy2(item, destino)
+
+
+def _bootstrap_sqlite_runtime_files() -> None:
+    if DB_IS_POSTGRES:
+        return
+
+    db_source = _first_existing_path(
+        (BUNDLED_DB_PATH, LEGACY_BUNDLED_DB_PATH),
+        exclude=DB_PATH,
+    )
+    if db_source is not None and not _sqlite_db_has_data(DB_PATH):
+        shutil.copy2(db_source, DB_PATH)
+
+    if not _directory_has_files(UPLOAD_DIR):
+        upload_source = _first_existing_path(
+            (BUNDLED_UPLOAD_DIR, LEGACY_BUNDLED_UPLOAD_DIR),
+            exclude=UPLOAD_DIR,
+        )
+        if upload_source is not None:
+            _copy_directory_contents(upload_source, UPLOAD_DIR)
+
+    if not _directory_has_files(REPORTS_DIR):
+        reports_source = _first_existing_path(
+            (BUNDLED_REPORTS_DIR, LEGACY_BUNDLED_REPORTS_DIR),
+            exclude=REPORTS_DIR,
+        )
+        if reports_source is not None:
+            _copy_directory_contents(reports_source, REPORTS_DIR)
 
 
 def _append_clause(sql: str, clause: str) -> str:
@@ -301,8 +416,36 @@ def ping_database() -> dict[str, Any]:
             valor = row[0]
         return {
             "db_is_postgres": DB_IS_POSTGRES,
+            "db_path": None if DB_IS_POSTGRES else str(DB_PATH),
+            "force_sqlite": FORCE_SQLITE,
+            "database_url_present": bool(DATABASE_URL_RAW),
             "value": valor,
         }
+
+
+def _normalizar_fotos_legadas(cur) -> None:
+    if DB_IS_POSTGRES:
+        return
+
+    cur.execute("PRAGMA table_info(colaboradores);")
+    colunas = {row[1] for row in cur.fetchall()}
+    if "foto" not in colunas:
+        return
+
+    cur.execute("SELECT id, foto FROM colaboradores WHERE COALESCE(TRIM(foto), '') <> '';")
+    atualizacoes = []
+    for colaborador_id, foto in cur.fetchall():
+        original = (foto or "").strip()
+        normalizada = original.replace("\\", "/")
+        for prefixo in ("fotos_colaboradores/", "web/uploads/", "uploads/"):
+            if normalizada.lower().startswith(prefixo):
+                normalizada = normalizada[len(prefixo):]
+                break
+        normalizada = normalizada.strip().strip("/")
+        if normalizada and normalizada != original:
+            atualizacoes.append((normalizada, colaborador_id))
+    if atualizacoes:
+        cur.executemany("UPDATE colaboradores SET foto = ? WHERE id = ?;", atualizacoes)
 
 
 def _seed_core_data_if_empty(cur) -> None:
@@ -576,6 +719,7 @@ def _create_schema(cur) -> None:
 
 def init_db() -> None:
     ensure_dirs()
+    _bootstrap_sqlite_runtime_files()
     with get_connection() as conn:
         cur = conn.cursor()
         _create_schema(cur)
@@ -593,5 +737,6 @@ def init_db() -> None:
             if "data_saida" not in colunas_folgas:
                 cur.execute("ALTER TABLE folgas ADD COLUMN data_saida TEXT;")
 
+        _normalizar_fotos_legadas(cur)
         _seed_core_data_if_empty(cur)
         conn.commit()
